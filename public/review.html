@@ -7,18 +7,25 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/predictor/styles.css">
-    <script src="/predictor/config.js"></script>
+    <script src="/predictor/config-ui.js"></script>
 </head>
 <body>
     <div id="nav-placeholder"></div>
     
     <div class="message">
         <h1>Review Predictions</h1>
-        <div class="view-toggle">
-            <button id="tableViewBtn" class="active">Table View</button>
-            <button id="cardViewBtn">Card View</button>
+        <div id="predictionGrid">
+            <div class="view-tabs">
+                <div class="view-tab active" onclick="switchView('teams')">Votes by Team</div>
+                <div class="view-tab" onclick="switchView('people')">Votes by Person</div>
+            </div>
+            <div class="teams-view">
+                <div id="teamCards"></div>
+            </div>
+            <div class="people-view" style="display: none;">
+                <div id="personCards"></div>
+            </div>
         </div>
-        <div id="predictionsContainer"></div>
     </div>
 
     <script>
@@ -31,28 +38,12 @@
 
         const currentUser = localStorage.getItem('userName');
         if (!currentUser) {
-            window.location.href = getPath('/name.html');
+            window.location.href = getPath('/');
         }
 
-        // View toggle functionality
-        const tableViewBtn = document.getElementById('tableViewBtn');
-        const cardViewBtn = document.getElementById('cardViewBtn');
-        const predictionsContainer = document.getElementById('predictionsContainer');
-
-        tableViewBtn.addEventListener('click', () => {
-            tableViewBtn.classList.add('active');
-            cardViewBtn.classList.remove('active');
-            displayPredictions('table');
-        });
-
-        cardViewBtn.addEventListener('click', () => {
-            cardViewBtn.classList.add('active');
-            tableViewBtn.classList.remove('active');
-            displayPredictions('card');
-        });
-
         // Format voter list with current user highlight
-        function formatVoterList(voters, currentUser) {
+        function formatVoterList(voters) {
+            if (!voters || !Array.isArray(voters)) return '';
             return voters.map(voter => {
                 if (voter === currentUser) {
                     return `<span class="current-user">${voter}</span>`;
@@ -61,88 +52,158 @@
             }).join(', ');
         }
 
-        // Create prediction card
-        function createPredictionCard(predictions) {
+        // Create team card
+        function createTeamCard(team, predictions) {
+            const teamPredictions = predictions.filter(pred => 
+                pred.firstHome === team.code || 
+                pred.firstAway === team.code || 
+                pred.lastHome === team.code || 
+                pred.lastAway === team.code
+            );
+
+            if (teamPredictions.length === 0) {
+                return '';
+            }
+
             return `
-                <div class="prediction-card">
-                    <div class="card-header">
-                        <h3>${predictions.team}</h3>
+                <div class="team-card">
+                    <h3>${team.team}</h3>
+                    <div class="prediction-list">
+                        ${teamPredictions.map(pred => `
+                            <div class="prediction-item">
+                                <span class="prediction-type">
+                                    ${pred.firstHome === team.code ? 'First Home: ' : ''}
+                                    ${pred.firstAway === team.code ? 'First Away: ' : ''}
+                                    ${pred.lastHome === team.code ? 'Last Home: ' : ''}
+                                    ${pred.lastAway === team.code ? 'Last Away: ' : ''}
+                                </span>
+                                <span class="prediction-name"><strong>${pred.name}</strong></span>
+                            </div>
+                        `).join('')}
                     </div>
-                    <div class="card-content">
-                        <div class="prediction-row">
-                            <div class="prediction-label">First Home:</div>
-                            <div class="prediction-value">
-                                <span class="team-name ${predictions.first_home.length === 0 ? 'no-predictions' : ''}">${formatVoterList(predictions.first_home, currentUser)}</span>
-                            </div>
+                </div>
+            `;
+        }
+
+        // Create person card
+        function createPersonCard(prediction, teamMap) {
+            return `
+                <div class="team-card">
+                    <h3>${prediction.name}</h3>
+                    <div class="prediction-list">
+                        <div class="prediction-item">
+                            <span class="prediction-name">First Home</span>
+                            <span class="prediction-type"><strong>${getTeamDisplay(prediction.firstHome, teamMap)}</strong></span>
                         </div>
-                        <div class="prediction-row">
-                            <div class="prediction-label">First Away:</div>
-                            <div class="prediction-value">
-                                <span class="team-name ${predictions.first_away.length === 0 ? 'no-predictions' : ''}">${formatVoterList(predictions.first_away, currentUser)}</span>
-                            </div>
+                        <div class="prediction-item">
+                            <span class="prediction-name">First Away</span>
+                            <span class="prediction-type"><strong>${getTeamDisplay(prediction.firstAway, teamMap)}</strong></span>
                         </div>
-                        <div class="prediction-row">
-                            <div class="prediction-label">Last Home:</div>
-                            <div class="prediction-value">
-                                <span class="team-name ${predictions.last_home.length === 0 ? 'no-predictions' : ''}">${formatVoterList(predictions.last_home, currentUser)}</span>
-                            </div>
+                        <div class="prediction-item">
+                            <span class="prediction-name">Last Home</span>
+                            <span class="prediction-type"><strong>${getTeamDisplay(prediction.lastHome, teamMap)}</strong></span>
                         </div>
-                        <div class="prediction-row">
-                            <div class="prediction-label">Last Away:</div>
-                            <div class="prediction-value">
-                                <span class="team-name ${predictions.last_away.length === 0 ? 'no-predictions' : ''}">${formatVoterList(predictions.last_away, currentUser)}</span>
-                            </div>
+                        <div class="prediction-item">
+                            <span class="prediction-name">Last Away</span>
+                            <span class="prediction-type"><strong>${getTeamDisplay(prediction.lastAway, teamMap)}</strong></span>
                         </div>
                     </div>
                 </div>
             `;
         }
 
-        // Display predictions in table or card view
-        function displayPredictions(viewType) {
-            fetch(getPath('/api/predictions'))
-                .then(response => response.json())
-                .then(predictions => {
-                    if (viewType === 'table') {
-                        // Create table view
-                        const table = document.createElement('table');
-                        table.innerHTML = `
-                            <thead>
-                                <tr>
-                                    <th>Team</th>
-                                    <th>First Home</th>
-                                    <th>First Away</th>
-                                    <th>Last Home</th>
-                                    <th>Last Away</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${predictions.map(p => `
-                                    <tr>
-                                        <td class="team-name">${p.team}</td>
-                                        <td class="voter-list">${formatVoterList(p.first_home, currentUser)}</td>
-                                        <td class="voter-list">${formatVoterList(p.first_away, currentUser)}</td>
-                                        <td class="voter-list">${formatVoterList(p.last_home, currentUser)}</td>
-                                        <td class="voter-list">${formatVoterList(p.last_away, currentUser)}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        `;
-                        predictionsContainer.innerHTML = '';
-                        predictionsContainer.appendChild(table);
-                    } else {
-                        // Create card view
-                        predictionsContainer.innerHTML = predictions.map(createPredictionCard).join('');
+        function getTeamDisplay(teamCode, teamMap) {
+            if (!teamCode) return 'Not selected';
+            const team = teamMap[teamCode];
+            return team ? team.team : teamCode;
+        }
+
+        // Display predictions
+        async function displayPredictions(viewType) {
+            try {
+                const [predictionsResponse, teamsResponse] = await Promise.all([
+                    fetch(getPath('/api/predictions')),
+                    fetch(getPath('/api/teams'))
+                ]);
+                
+                if (!predictionsResponse.ok || !teamsResponse.ok) {
+                    throw new Error('Failed to fetch data');
+                }
+
+                const predictions = await predictionsResponse.json();
+                const teams = await teamsResponse.json();
+
+                console.log('Loaded predictions:', predictions);
+                console.log('Loaded teams:', teams);
+
+                // Create a map of team codes to team objects
+                const teamMap = teams.reduce((map, team) => {
+                    map[team.code] = team;
+                    return map;
+                }, {});
+
+                // Get list of valid team codes
+                const validTeamCodes = new Set(teams.map(team => team.code));
+
+                // Validate predictions data and filter out ignored teams
+                const validPredictions = predictions.filter(pred => {
+                    const isValid = pred && pred.name && 
+                        (pred.firstHome || pred.firstAway || pred.lastHome || pred.lastAway);
+                    
+                    // Check if any of the predictions are for ignored teams
+                    const hasIgnoredTeam = [pred.firstHome, pred.firstAway, pred.lastHome, pred.lastAway]
+                        .some(code => code && !validTeamCodes.has(code));
+                    
+                    if (!isValid) {
+                        console.warn('Invalid prediction found:', pred);
                     }
-                })
-                .catch(error => {
-                    console.error('Error loading predictions:', error);
-                    predictionsContainer.innerHTML = '<p>Error loading predictions. Please try again later.</p>';
+                    if (hasIgnoredTeam) {
+                        console.warn('Prediction contains ignored team:', pred);
+                    }
+                    
+                    return isValid && !hasIgnoredTeam;
                 });
+
+                console.log('Valid predictions:', validPredictions);
+
+                if (viewType === 'teams') {
+                    const teamContainer = document.getElementById('teamCards');
+                    teamContainer.innerHTML = teams.map(team => createTeamCard(team, validPredictions)).join('');
+                } else if (viewType === 'people') {
+                    const personContainer = document.getElementById('personCards');
+                    // Sort predictions by name to ensure consistent order
+                    const sortedPredictions = validPredictions.sort((a, b) => a.name.localeCompare(b.name));
+                    personContainer.innerHTML = sortedPredictions.map(pred => createPersonCard(pred, teamMap)).join('');
+                }
+            } catch (error) {
+                console.error('Error displaying predictions:', error);
+                document.getElementById('predictionGrid').innerHTML = '<p>Error loading predictions. Please try again.</p>';
+            }
         }
 
         // Initial display
-        displayPredictions('table');
+        displayPredictions('teams');
+
+        function switchView(view) {
+            const teamsView = document.querySelector('.teams-view');
+            const peopleView = document.querySelector('.people-view');
+            const teamsTab = document.querySelector('.view-tab:first-child');
+            const peopleTab = document.querySelector('.view-tab:last-child');
+            
+            if (view === 'teams') {
+                teamsView.style.display = 'block';
+                peopleView.style.display = 'none';
+                teamsTab.classList.add('active');
+                peopleTab.classList.remove('active');
+                displayPredictions('teams');
+            } else {
+                teamsView.style.display = 'none';
+                peopleView.style.display = 'block';
+                teamsTab.classList.remove('active');
+                peopleTab.classList.add('active');
+                displayPredictions('people');
+            }
+        }
     </script>
 </body>
 </html> 

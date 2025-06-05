@@ -1,323 +1,316 @@
 const express = require('express');
-const fs = require('fs');
 const bodyParser = require('body-parser');
+const fs = require('fs').promises;
+const path = require('path');
+const { CONFIG, BASE_PATH } = require('./config');
 const app = express();
 const port = 3001;
 
-// Base path configuration
-const BASE_PATH = process.env.BASE_PATH || '/predictor';
+// Middleware
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
 
-// Clear module cache on startup
-Object.keys(require.cache).forEach(key => {
-    if (key.includes('teams.json')) {
-        delete require.cache[key];
+// Configure MIME types
+app.use((req, res, next) => {
+    if (req.path.endsWith('.js')) {
+        res.type('application/javascript');
+    }
+    next();
+});
+
+// Serve static files from the public directory under /predictor
+app.use(BASE_PATH, express.static('public'));
+
+// Initialize predictions file if it doesn't exist
+async function initializePredictionsFile() {
+    try {
+        await fs.access('predictions.txt');
+    } catch (error) {
+        // File doesn't exist, create it with empty array
+        await fs.writeFile('predictions.txt', JSON.stringify([], null, 2));
+    }
+}
+
+// Root route handler
+app.get(BASE_PATH, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'name.html'));
+});
+
+// Vote route handler
+app.get(`${BASE_PATH}/vote`, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'vote.html'));
+});
+
+// Review route handler
+app.get(`${BASE_PATH}/review`, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'review.html'));
+});
+
+// Clear data endpoint
+app.get(`${BASE_PATH}/clear`, async (req, res) => {
+    console.log('Clear endpoint called');
+    try {
+        const timestamp = new Date().toISOString();
+        const clearComment = ``;
+        const emptyPredictions = JSON.stringify([], null, 2);
+        
+        console.log('Writing to predictions.txt:', clearComment + emptyPredictions);
+        
+        // Write the comment and empty array to the file
+        await fs.writeFile('predictions.txt', clearComment + emptyPredictions);
+        console.log('Predictions file cleared successfully at', timestamp);
+        
+        // Verify the file was written
+        const fileContent = await fs.readFile('predictions.txt', 'utf8');
+        console.log('File content after clearing:', fileContent);
+        
+        res.sendFile(path.join(__dirname, 'public', 'clear.html'));
+    } catch (error) {
+        console.error('Error clearing predictions:', error);
+        console.error('Error details:', {
+            message: error.message,
+            code: error.code,
+            stack: error.stack
+        });
+        res.status(500).send('Error clearing predictions');
     }
 });
 
-const teams = require('./teams.json');
-const TEAMS = teams.filter(team => team.team !== 'Burnley').map(team => team.team);
-
-// Middleware
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-// Serve static files with base path
-app.use(BASE_PATH, express.static('public'));
-
-// Test endpoint
-app.get(`${BASE_PATH}/api/test`, (req, res) => {
-    console.log('Test endpoint hit');
-    res.json({ status: 'ok' });
-});
-
-// Teams API endpoint
-app.get(`${BASE_PATH}/api/teams`, (req, res) => {
-    console.log('Teams endpoint hit');
-    res.json(teams.filter(team => team.team !== 'Burnley'));
-});
-
-// Predictions API endpoint
-app.get(`${BASE_PATH}/api/current-predictions`, (req, res) => {
-    console.log('Predictions endpoint hit');
+// API endpoints
+app.get(`${BASE_PATH}/api/teams`, async (req, res) => {
     try {
-        // Check if file exists, if not create empty array
-        if (!fs.existsSync('predictions.txt')) {
-            console.log('predictions.txt does not exist, returning empty object');
-            res.setHeader('Content-Type', 'application/json');
-            return res.json({});
-        }
+        const data = await fs.readFile('teams.json', 'utf8');
+        const allTeams = JSON.parse(data);
+        
+        // Filter out ignored teams
+        const teams = allTeams.filter(team => !CONFIG.IGNORED_TEAMS.includes(team.code));
+        
+        console.log('Filtered teams:', teams.length, 'of', allTeams.length, 'teams');
+        console.log('Teams after filtering:', teams.map(t => t.team).join(', '));
+        
+        res.json(teams);
+    } catch (error) {
+        console.error('Error reading teams:', error);
+        res.status(500).json({ error: 'Error reading teams' });
+    }
+});
 
-        const data = fs.readFileSync('predictions.txt', 'utf8');
-        console.log('Raw file data:', data);
-        
-        // If file is empty or invalid, return empty object
-        if (!data.trim() || data.trim() === '[]') {
-            console.log('File is empty or contains only [], returning empty object');
-            res.setHeader('Content-Type', 'application/json');
-            return res.json({});
+app.get(`${BASE_PATH}/api/current-predictions`, async (req, res) => {
+    try {
+        let predictions = [];
+        try {
+            const data = await fs.readFile('predictions.txt', 'utf8');
+            predictions = JSON.parse(data);
+        } catch (error) {
+            console.log('No predictions file or empty file, starting fresh');
+            predictions = [];
         }
-        
-        // Clean up the data - remove any trailing commas and ensure proper JSON array format
-        let cleanedData = data.trim();
-        console.log('Cleaned data before parsing:', cleanedData);
-        
-        if (cleanedData.startsWith('[') && cleanedData.endsWith(']')) {
-            // Remove any trailing commas before the closing bracket
-            cleanedData = cleanedData.replace(/,(\s*])/g, '$1');
-        } else {
-            // If not a proper array, wrap in array brackets
-            cleanedData = '[' + cleanedData + ']';
-        }
-        
-        console.log('Data after cleaning:', cleanedData);
-        
-        // Parse the cleaned data
-        const predictions = JSON.parse(cleanedData);
-        console.log('Parsed predictions:', predictions);
         
         const predictionDetails = {};
-
-        // Initialize prediction details for all teams using codes
-        teams.filter(team => team.team !== 'Burnley').forEach(team => {
-            predictionDetails[team.code] = {
-                'first_home': [],
-                'first_away': [],
-                'last_home': [],
-                'last_away': []
-            };
-        });
-
-        // Collect predictor names for each option
-        predictions.forEach(record => {
-            if (!record.predictions) {
-                console.log('Skipping record without predictions:', record);
-                return;
-            }
-            
-            const predictions = Array.isArray(record.predictions) ? record.predictions : [record.predictions];
-            predictions.forEach(prediction => {
-                const [teamCode, type] = prediction.split(':');
-                if (predictionDetails[teamCode] && predictionDetails[teamCode][type]) {
-                    predictionDetails[teamCode][type].push(record.name);
-                }
-            });
-        });
-
-        console.log('Final prediction details:', predictionDetails);
         
-        // Set proper content type and send JSON response
-        res.setHeader('Content-Type', 'application/json');
+        // Initialize prediction details for each team (excluding ignored teams)
+        const teams = JSON.parse(await fs.readFile('teams.json', 'utf8'));
+        teams
+            .filter(team => !CONFIG.IGNORED_TEAMS.includes(team.code))
+            .forEach(team => {
+                predictionDetails[team.code] = {
+                    'first_home': [],
+                    'first_away': [],
+                    'last_home': [],
+                    'last_away': []
+                };
+            });
+
+        // Process predictions
+        predictions.forEach(record => {
+            if (record.predictions) {
+                record.predictions.forEach(prediction => {
+                    const [teamCode, type] = prediction.split(':');
+                    if (!CONFIG.IGNORED_TEAMS.includes(teamCode) && 
+                        predictionDetails[teamCode] && 
+                        predictionDetails[teamCode][type]) {
+                        predictionDetails[teamCode][type].push(record.name);
+                    }
+                });
+            }
+        });
+
         res.json(predictionDetails);
     } catch (error) {
-        console.error('Error in /api/current-predictions:', error);
-        res.setHeader('Content-Type', 'application/json');
+        console.error('Error reading predictions:', error);
         res.status(500).json({ error: 'Error reading predictions' });
     }
 });
 
-// Function to load predictions from file
-function loadPredictions() {
+app.get(`${BASE_PATH}/api/predictions`, async (req, res) => {
     try {
-        if (!fs.existsSync('predictions.txt')) {
-            return {};
+        let predictions = [];
+        try {
+            const data = await fs.readFile('predictions.txt', 'utf8');
+            console.log('Raw predictions from file:', data);
+            if (data && data.trim()) {
+                predictions = JSON.parse(data);
+            }
+        } catch (error) {
+            console.log('No predictions file or empty file, starting fresh');
+            predictions = [];
         }
-        const data = fs.readFileSync('predictions.txt', 'utf8');
-        if (!data.trim() || data.trim() === '[]') {
-            return {};
-        }
-        const predictions = JSON.parse(data);
-        const predictionDetails = {};
-
-        // Initialize prediction details for all teams using codes
-        teams.filter(team => team.team !== 'Burnley').forEach(team => {
-            predictionDetails[team.code] = {
-                'first_home': [],
-                'first_away': [],
-                'last_home': [],
-                'last_away': []
+        
+        console.log('Parsed predictions:', predictions);
+        
+        // Transform predictions into the expected format
+        const transformedPredictions = predictions.map(pred => {
+            const result = {
+                name: pred.name || '',
+                firstHome: '',
+                firstAway: '',
+                lastHome: '',
+                lastAway: ''
             };
-        });
-
-        // Collect predictor names for each option
-        predictions.forEach(record => {
-            if (!record.predictions) return;
             
-            const predictions = Array.isArray(record.predictions) ? record.predictions : [record.predictions];
-            predictions.forEach(prediction => {
-                const [teamCode, type] = prediction.split(':');
-                if (predictionDetails[teamCode] && predictionDetails[teamCode][type]) {
-                    predictionDetails[teamCode][type].push(record.name);
-                }
-            });
+            if (pred.predictions && Array.isArray(pred.predictions)) {
+                pred.predictions.forEach(p => {
+                    if (typeof p === 'string') {
+                        const [type, team] = p.split(':');
+                        console.log('Processing prediction:', { type, team, prediction: p });
+                        if (type && team && !CONFIG.IGNORED_TEAMS.includes(team)) {
+                            switch(type) {
+                                case 'first_home':
+                                    result.firstHome = team;
+                                    break;
+                                case 'first_away':
+                                    result.firstAway = team;
+                                    break;
+                                case 'last_home':
+                                    result.lastHome = team;
+                                    break;
+                                case 'last_away':
+                                    result.lastAway = team;
+                                    break;
+                            }
+                        }
+                    }
+                });
+            }
+            
+            console.log('Transformed prediction:', result);
+            return result;
         });
-
-        return predictionDetails;
-    } catch (error) {
-        console.error('Error loading predictions:', error);
-        return {};
-    }
-}
-
-// Get list of existing player names
-app.get(`${BASE_PATH}/api/players`, (req, res) => {
-    try {
-        const predictions = loadPredictions();
-        const names = new Set();
         
-        // Extract unique names from predictions
-        Object.values(predictions).forEach(teamPredictions => {
-            Object.values(teamPredictions).forEach(predictions => {
-                predictions.forEach(name => names.add(name));
-            });
-        });
-        
-        res.json(Array.from(names).sort());
+        console.log('Sending transformed predictions:', transformedPredictions);
+        res.json(transformedPredictions);
     } catch (error) {
-        console.error('Error getting player names:', error);
-        res.status(500).json({ error: 'Error getting player names' });
+        console.error('Error reading predictions:', error);
+        res.json([]); // Return empty array instead of error
     }
 });
 
-// Function to inject navigation into HTML
-function injectNavigation(html) {
-    const navHtml = fs.readFileSync(__dirname + '/public/nav.html', 'utf8');
-    return html.replace('</head>', `${navHtml}</head>`);
-}
-
-app.get(BASE_PATH, (req, res) => {
-    res.sendFile(__dirname + '/public/name.html');
+app.get(`${BASE_PATH}/api/players`, async (req, res) => {
+    try {
+        const data = await fs.readFile('predictions.txt', 'utf8');
+        // Remove any comment lines before parsing JSON
+        const jsonData = data.replace(/^\/\/.*$/gm, '').trim();
+        const predictions = JSON.parse(jsonData);
+        const players = new Set();
+        
+        predictions.forEach(record => {
+            if (record.name) {
+                players.add(record.name);
+            }
+        });
+        
+        res.json(Array.from(players));
+    } catch (error) {
+        console.error('Error reading players:', error);
+        res.status(500).json({ error: 'Error reading players' });
+    }
 });
 
-app.post(`${BASE_PATH}/start`, (req, res) => {
-    const name = req.body.name.trim();
-    if (!name) return res.redirect(BASE_PATH);
-
-    // Load existing predictions to check for name
-    let allPredictions = [];
+// Form submission endpoint
+app.post(`${BASE_PATH}/submit`, async (req, res) => {
     try {
-        const data = fs.readFileSync('predictions.txt', 'utf8');
-        allPredictions = JSON.parse(data);
-    } catch (error) {
-        // If file doesn't exist or is empty, start with empty array
-        allPredictions = [];
-    }
-
-    // Check if name already exists in predictions
-    const nameExists = allPredictions.some(pred => pred.name.toLowerCase() === name.toLowerCase());
-    if (nameExists) {
-        return res.status(400).json({ 
-            error: 'This name has already been used. Please choose a different name.' 
+        const { name, firstHome, firstAway, lastHome, lastAway } = req.body;
+        
+        console.log('Received prediction:', {
+            name,
+            firstHome,
+            firstAway,
+            lastHome,
+            lastAway
         });
-    }
+        
+        // Validate input
+        if (!name || !firstHome || !firstAway || !lastHome || !lastAway) {
+            console.log('Missing required fields:', { name, firstHome, firstAway, lastHome, lastAway });
+            return res.status(400).json({ error: 'All fields are required' });
+        }
 
+        // Read current predictions
+        let predictions = [];
+        try {
+            const data = await fs.readFile('predictions.txt', 'utf8');
+            console.log('Read predictions file:', data);
+            predictions = JSON.parse(data);
+            console.log('Parsed predictions:', predictions);
+        } catch (error) {
+            console.log('No predictions file or empty file, starting fresh');
+            predictions = [];
+        }
+
+        // Check if name has already been used
+        const nameExists = predictions.some(pred => pred.name === name);
+        if (nameExists) {
+            console.log('Name already exists:', name);
+            return res.status(400).json({ error: 'This name has already been used' });
+        }
+
+        // Add new prediction
+        const newPrediction = {
+            name,
+            predictions: [
+                `first_home:${firstHome}`,
+                `first_away:${firstAway}`,
+                `last_home:${lastHome}`,
+                `last_away:${lastAway}`
+            ],
+            timestamp: new Date().toISOString()
+        };
+        console.log('Adding new prediction:', newPrediction);
+        
+        predictions.push(newPrediction);
+
+        // Save updated predictions
+        const predictionsJson = JSON.stringify(predictions, null, 2);
+        console.log('Writing predictions to file:', predictionsJson);
+        
+        await fs.writeFile('predictions.txt', predictionsJson);
+        console.log('Prediction saved successfully');
+        
+        res.redirect(`${BASE_PATH}/review`);
+    } catch (error) {
+        console.error('Error saving prediction:', error);
+        console.error('Error details:', {
+            message: error.message,
+            code: error.code,
+            stack: error.stack
+        });
+        res.status(500).json({ error: 'Error saving prediction' });
+    }
+});
+
+// Start endpoint
+app.post(`${BASE_PATH}/start`, async (req, res) => {
+    const { name } = req.body;
+    if (!name) {
+        return res.status(400).json({ error: 'Name is required' });
+    }
     res.redirect(`${BASE_PATH}/vote?name=${encodeURIComponent(name)}`);
 });
 
-app.get(`${BASE_PATH}/vote`, (req, res) => {
-    const name = req.query.name;
-    if (!name) return res.redirect(BASE_PATH);
-    res.sendFile(__dirname + '/public/vote.html');
-});
-
-app.post(`${BASE_PATH}/submit`, (req, res) => {
-    console.log('Submit endpoint hit with body:', req.body);
-    const { name, predictions } = req.body;
-    
-    if (!name || !predictions) {
-        console.error('Missing name or predictions:', req.body);
-        return res.status(400).json({ error: 'Name and predictions are required' });
-    }
-
-    // Validate predictions
-    if (!Array.isArray(predictions) || predictions.length !== 4) {
-        return res.status(400).json({ error: 'Exactly 4 predictions are required' });
-    }
-
-    // Check for duplicate team selections in first match
-    const firstMatchTeams = new Set();
-    // Check for duplicate team selections in last match
-    const lastMatchTeams = new Set();
-
-    for (const prediction of predictions) {
-        const [teamCode, type] = prediction.split(':');
-        
-        if (type === 'first_home' || type === 'first_away') {
-            if (firstMatchTeams.has(teamCode)) {
-                return res.status(400).json({ 
-                    error: `Team ${teamCode} cannot be selected for both first match home and away` 
-                });
-            }
-            firstMatchTeams.add(teamCode);
-        }
-        
-        if (type === 'last_home' || type === 'last_away') {
-            if (lastMatchTeams.has(teamCode)) {
-                return res.status(400).json({ 
-                    error: `Team ${teamCode} cannot be selected for both last match home and away` 
-                });
-            }
-            lastMatchTeams.add(teamCode);
-        }
-    }
-
-    // Load existing predictions
-    let allPredictions = [];
-    try {
-        const data = fs.readFileSync('predictions.txt', 'utf8');
-        allPredictions = JSON.parse(data);
-    } catch (error) {
-        // If file doesn't exist or is empty, start with empty array
-        allPredictions = [];
-    }
-
-    // Check if name already exists in predictions
-    const nameExists = allPredictions.some(pred => pred.name.toLowerCase() === name.toLowerCase());
-    if (nameExists) {
-        return res.status(400).json({ 
-            error: 'This name has already been used. Please choose a different name.' 
-        });
-    }
-
-    // Add new prediction
-    allPredictions.push({
-        name,
-        predictions,
-        timestamp: new Date().toISOString()
+// Initialize predictions file before starting server
+initializePredictionsFile().then(() => {
+    // Start server
+    app.listen(port, () => {
+        console.log(`Server running at http://localhost:${port}${BASE_PATH}`);
     });
-
-    // Save updated predictions
-    fs.writeFileSync('predictions.txt', JSON.stringify(allPredictions, null, 2));
-
-    res.redirect(`${BASE_PATH}/review`);
-});
-
-app.get(`${BASE_PATH}/review`, (req, res) => {
-    res.sendFile(__dirname + '/public/review.html');
-});
-
-// Clear route to reset session
-app.get(`${BASE_PATH}/clear`, (req, res) => {
-    res.sendFile(__dirname + '/public/clear.html');
-});
-
-// Admin endpoint to reset predictions
-app.post(`${BASE_PATH}/api/reset-predictions`, (req, res) => {
-    try {
-        // Clear the predictions file
-        fs.writeFileSync('predictions.txt', '');
-        res.status(200).json({ message: 'Predictions reset successfully' });
-    } catch (error) {
-        console.error('Error resetting predictions:', error);
-        res.status(500).json({ error: 'Failed to reset predictions' });
-    }
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error('Server error:', err);
-    res.status(500).json({ error: 'Internal server error' });
-});
-
-app.listen(port, () => {
-    console.log(`App running at http://localhost:${port}${BASE_PATH}`);
 });

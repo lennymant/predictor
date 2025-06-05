@@ -1,15 +1,19 @@
 /* Common styles */
 :root {
-    --primary-color: #2563eb;
-    --primary-hover: #1d4ed8;
-    --surface-color: #FFFFFF;
-    --background-color: #f8fafc;
-    --text-primary: #1e293b;
-    --text-secondary: #64748b;
-    --border-color: #e2e8f0;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
-    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+    /* Material Design Colors */
+    --primary-color: #1976d2;      /* Blue */
+    --primary-hover: #1565c0;      /* Darker Blue */
+    --primary-light: #bbdefb;      /* Light Blue */
+    --accent-color: #d32f2f;       /* Red */
+    --accent-light: #ffcdd2;       /* Light Red */
+    --surface-color: #ffffff;      /* White */
+    --background-color: #f5f5f5;   /* Light Grey */
+    --text-primary: #212121;       /* Dark Grey */
+    --text-secondary: #757575;     /* Medium Grey */
+    --border-color: #e0e0e0;       /* Light Grey */
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    --shadow-md: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
+    --shadow-lg: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
     --container-width: 960px;
     --container-padding: 1rem;
 }
@@ -35,7 +39,6 @@ body {
 /* Navigation */
 .nav {
     background-color: var(--primary-color);
-    padding: 0.75rem 0;
     box-shadow: var(--shadow-sm);
     position: sticky;
     top: 0;
@@ -52,7 +55,7 @@ body {
     align-items: center;
     width: 100%;
     max-width: var(--container-width);
-    padding: 0 var(--container-padding);
+    padding: 0.75rem var(--container-padding);
     box-sizing: border-box;
 }
 
@@ -98,25 +101,22 @@ body > *:not(.nav) {
 
 /* Message panel */
 .message {
-    background-color: var(--text-secondary);
+    background-color: white;
     padding: 1rem;
-    box-shadow: var(--shadow-md);
+    border: 1px solid #ddd;
+    border-radius: 4px;
     margin-bottom: 1rem;
-    border: 1px solid var(--text-secondary);
-    box-sizing: border-box;
-    width: 100%;
 }
 
-.message h1, .message h2 {
+.message h1 {
     margin: 0 0 0.5rem 0;
-    color: white;
+    color: #2563eb;
     font-weight: 600;
     font-size: 1.25rem;
-    letter-spacing: -0.02em;
 }
 
 .message p {
-    color: white;
+    color: var(--text-primary);
     margin: 0.5rem 0;
 }
 
@@ -168,38 +168,17 @@ body > *:not(.nav) {
     padding: 0.75rem;
     margin: 0.25rem 0;
     border: 1px solid var(--border-color);
+    border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s ease;
     background-color: var(--surface-color);
 }
 
 .selectable-option:hover {
-    background-color: var(--background-color);
+    background-color: var(--primary-light);
+    border-color: var(--primary-color);
     transform: translateY(-1px);
     box-shadow: var(--shadow-sm);
-}
-
-.selectable-option.deselected {
-    animation: deselected-flash 1s ease-out;
-}
-
-@keyframes deselected-flash {
-    0% {
-        background-color: rgba(239, 68, 68, 0.1);
-        border-color: #ef4444;
-    }
-    25% {
-        background-color: transparent;
-        border-color: var(--border-color);
-    }
-    50% {
-        background-color: rgba(239, 68, 68, 0.1);
-        border-color: #ef4444;
-    }
-    100% {
-        background-color: transparent;
-        border-color: var(--border-color);
-    }
 }
 
 .selectable-option input[type="radio"] {
@@ -207,14 +186,19 @@ body > *:not(.nav) {
 }
 
 .radio-custom {
-    width: 1.25rem;
-    height: 1.25rem;
-    border: 2px solid #22c55e;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--text-secondary);
     border-radius: 50%;
     margin-right: 0.75rem;
     position: relative;
     flex-shrink: 0;
     transition: all 0.2s ease;
+}
+
+.selectable-option input[type="radio"]:checked + .radio-custom {
+    border-color: var(--primary-color);
+    background-color: var(--primary-color);
 }
 
 .selectable-option input[type="radio"]:checked + .radio-custom::after {
@@ -223,9 +207,9 @@ body > *:not(.nav) {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 0.75rem;
-    height: 0.75rem;
-    background-color: #22c55e;
+    width: 8px;
+    height: 8px;
+    background-color: white;
     border-radius: 50%;
 }
 
@@ -353,11 +337,11 @@ legend {
 /* Prediction summary */
 .prediction-summary {
     position: fixed;
-    bottom: 3.5rem;
+    bottom: 0;
     left: 0;
     right: 0;
     background-color: var(--surface-color);
-    padding: 0.75rem;
+    padding: 1rem;
     text-align: center;
     font-weight: 500;
     font-size: 1rem;
@@ -367,7 +351,7 @@ legend {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 0.75rem;
+    gap: 1rem;
     border-top: 1px solid var(--border-color);
 }
 
@@ -380,33 +364,35 @@ legend {
 
 .summary-box {
     display: inline-block;
-    min-width: 2.5rem;
-    padding: 0.25rem 0.5rem;
+    min-width: 3rem;
+    padding: 0.5rem 1rem;
     text-align: center;
     font-weight: 600;
     background-color: var(--background-color);
     color: var(--text-secondary);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
     transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
 }
 
 .summary-box.selected {
-    background-color: #22c55e;
+    background-color: var(--primary-color);
     color: white;
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow-md);
 }
 
 /* Prediction review page styles */
 #predictionGrid {
-    background-color: var(--surface-color);
-    padding: 1rem;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--border-color);
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 0 4px 4px 4px;
 }
 
 /* Table layout */
 .table-view {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    padding: 1.5rem;
 }
 
 .table-view table {
@@ -415,19 +401,21 @@ legend {
     border-spacing: 0;
     margin-top: 0.75rem;
     min-width: 600px;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .table-view th,
 .table-view td {
-    padding: 0.75rem;
+    padding: 1rem;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
 }
 
 .table-view th {
-    background-color: var(--background-color);
+    background-color: var(--primary-color);
+    color: white;
     font-weight: 600;
-    color: var(--text-primary);
     position: sticky;
     top: 0;
     z-index: 1;
@@ -435,7 +423,9 @@ legend {
 
 .table-view .header-row th {
     text-align: center;
-    padding: 0.5rem;
+    padding: 0.75rem;
+    background-color: var(--primary-color);
+    color: white;
 }
 
 .table-view .team-name {
@@ -451,6 +441,7 @@ legend {
 
 .table-view .voter-list {
     min-width: 120px;
+    color: var(--text-secondary);
 }
 
 .table-view tr:nth-child(even) {
@@ -458,42 +449,36 @@ legend {
 }
 
 .table-view tr:hover {
-    background-color: var(--border-color);
+    background-color: var(--primary-light);
 }
 
 .table-view tr:hover .team-name {
-    background-color: var(--border-color);
+    background-color: var(--primary-light);
 }
 
 /* Card layout */
 .cards-view {
-    display: none;
+    padding: 1.5rem;
 }
 
 .prediction-card {
-    background-color: var(--surface-color);
-    box-shadow: var(--shadow-sm);
-    margin-bottom: 0.75rem;
-    border: 1px solid var(--border-color);
-    overflow: hidden;
-}
-
-.prediction-card:nth-child(even) {
-    background-color: var(--background-color);
+    background-color: white;
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
 }
 
 .card-header {
-    background-color: inherit;
+    background-color: #2563eb;
     padding: 0.75rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid #ddd;
 }
 
 .card-header h3 {
     margin: 0;
     font-size: 1.1rem;
-    color: var(--text-primary);
+    color: white;
     font-weight: 600;
-    letter-spacing: -0.01em;
 }
 
 .card-content {
@@ -511,82 +496,53 @@ legend {
 .prediction-section h4 {
     margin: 0 0 0.5rem 0;
     font-size: 0.9rem;
-    color: var(--text-secondary);
+    color: #666;
     text-transform: uppercase;
-    letter-spacing: 0.02em;
-}
-
-.prediction-columns {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
 }
 
 .prediction-column {
-    background-color: var(--background-color);
+    background-color: #f8fafc;
     padding: 0.5rem;
+    border-radius: 4px;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    border: 1px solid #ddd;
 }
 
 .column-label {
     font-size: 0.8rem;
-    color: var(--text-secondary);
     font-weight: 600;
     min-width: 1.5rem;
     text-align: center;
-    background-color: var(--surface-color);
     padding: 0.25rem;
-    border-radius: 2px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
 }
 
 .column-label.home {
     color: #2563eb;
+    border-color: #2563eb;
 }
 
 .column-label.away {
     color: #dc2626;
-}
-
-.team-name {
-    flex-grow: 1;
-    font-weight: 500;
-    color: var(--text-primary);
-    font-size: 0.9rem;
-}
-
-.team-name.no-predictions {
-    color: var(--text-secondary);
-    opacity: 0.7;
+    border-color: #dc2626;
 }
 
 .voter-list {
-    color: var(--text-secondary);
+    color: #666;
     font-size: 0.9rem;
-    line-height: 1.6;
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid var(--border-color);
+    line-height: 1.4;
 }
 
 .voter-list .current-user {
     color: white;
     font-weight: 600;
-    background-color: #22c55e;
+    background-color: #2563eb;
     padding: 0.25rem 0.5rem;
     display: inline-block;
-    border-radius: 2px;
-    margin: 0.25rem 0;
-}
-
-.team-name .current-user {
-    color: white;
-    font-weight: 600;
-    background-color: #22c55e;
-    padding: 0.25rem 0.5rem;
-    display: inline-block;
-    border-radius: 2px;
+    border-radius: 4px;
     margin: 0.25rem 0;
 }
 
@@ -596,12 +552,13 @@ legend {
     padding: 1.5rem;
     box-shadow: var(--shadow-md);
     border: 1px solid var(--border-color);
+    border-radius: 8px;
     max-width: 600px;
     margin: 0 auto;
 }
 
 .admin-button {
-    background-color: #dc2626;
+    background-color: var(--accent-color);
     color: white;
     border: none;
     padding: 0.75rem 1.5rem;
@@ -610,10 +567,11 @@ legend {
     cursor: pointer;
     transition: all 0.2s ease;
     width: 100%;
+    border-radius: 4px;
 }
 
 .admin-button:hover {
-    background-color: #b91c1c;
+    background-color: #b71c1c;
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
 }
@@ -658,7 +616,7 @@ legend {
         padding: 0.75rem;
     }
 
-    .message h1, .message h2 {
+    .message h1 {
         font-size: 1.25rem;
     }
 
@@ -823,4 +781,175 @@ legend {
     color: var(--text-secondary);
     font-style: italic;
     margin: 0;
+}
+
+.team-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin: 1rem;
+    padding: 1rem;
+}
+
+.team-card .card-header {
+    border-bottom: 1px solid #eee;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+}
+
+.team-card .card-header h3 {
+    color: #333;
+    margin: 0;
+}
+
+.team-card .prediction-row {
+    display: flex;
+    margin: 0.5rem 0;
+}
+
+.team-card .prediction-label {
+    flex: 0 0 120px;
+    font-weight: 500;
+    color: #666;
+}
+
+.team-card .prediction-value {
+    flex: 1;
+}
+
+.team-card .voter-list {
+    color: #666;
+}
+
+.team-card .voter-list .current-user {
+    color: #e63946;
+    font-weight: 500;
+}
+
+/* View switcher tabs */
+.view-tabs {
+    display: flex;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-bottom: none;
+    margin-bottom: -1px;
+}
+
+.view-tab {
+    padding: 0.75rem 1rem;
+    color: #666;
+    font-weight: 500;
+    cursor: pointer;
+    flex: 1;
+    text-align: center;
+    border-bottom: 2px solid transparent;
+}
+
+.view-tab:hover {
+    color: #2563eb;
+    background-color: #f8fafc;
+}
+
+.view-tab.active {
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+}
+
+/* Team view */
+.team-view {
+    padding: 1.5rem;
+}
+
+.team-card {
+    background-color: var(--surface-color);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.team-card:nth-child(even) {
+    background-color: var(--background-color);
+}
+
+.team-card .card-header {
+    background-color: var(--primary-color);
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.team-card .card-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: white;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.team-card .card-content {
+    padding: 1rem;
+}
+
+.team-card .prediction-row {
+    display: flex;
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    background-color: var(--surface-color);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.team-card .prediction-label {
+    flex: 0 0 120px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.team-card .prediction-value {
+    flex: 1;
+    color: var(--text-primary);
+}
+
+.team-card .voter-list {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.team-card .voter-list .current-user {
+    color: white;
+    font-weight: 600;
+    background-color: var(--primary-color);
+    padding: 0.25rem 0.5rem;
+    display: inline-block;
+    border-radius: 4px;
+    margin: 0.25rem 0;
+}
+
+/* Responsive styles for team view */
+@media screen and (max-width: 767px) {
+    .team-card .prediction-row {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .team-card .prediction-label {
+        flex: none;
+    }
+}
+
+.selectable-option.unavailable {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.selectable-option.unavailable .radio-custom {
+    background-color: #e0e0e0;
+    border-color: #bdbdbd;
+}
+
+.selectable-option.unavailable .option-label {
+    color: #757575;
 } 

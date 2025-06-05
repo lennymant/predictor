@@ -1,272 +1,251 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Make Your Predictions</title>
+    <title>Vote</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css">
-    <script src="config.js"></script>
+    <link rel="stylesheet" href="/predictor/styles.css">
+    <script src="/predictor/config-ui.js"></script>
+    <script>
+        // Helper function to get full path
+        function getPath(path) {
+            return `/predictor${path}`;
+        }
+    </script>
 </head>
 <body>
     <div id="nav-placeholder"></div>
-    <div class="message">
-        <h2 id="userGreeting">Loading...</h2>
+    
+    <div class="vote-container">
+        <form id="predictionForm">
+            <fieldset>
+                <legend>First Home</legend>
+                <div id="firstHomeOptions" class="options-container"></div>
+            </fieldset>
+            
+            <fieldset>
+                <legend>First Away</legend>
+                <div id="firstAwayOptions" class="options-container"></div>
+            </fieldset>
+            
+            <fieldset>
+                <legend>Last Home</legend>
+                <div id="lastHomeOptions" class="options-container"></div>
+            </fieldset>
+            
+            <fieldset>
+                <legend>Last Away</legend>
+                <div id="lastAwayOptions" class="options-container"></div>
+            </fieldset>
+            
+            <button type="submit">Submit Prediction</button>
+        </form>
     </div>
-    <form method="POST" action="/submit" id="predictionForm" class="vote-container">
-        <input type="hidden" name="name" id="userName">
-        <div id="fixturesContainer"></div>
-        <div id="predictionSummary" class="prediction-summary"></div>
-        <button type="submit">Submit Predictions</button>
-    </form>
+
+    <div class="prediction-summary">
+        <div class="summary-label">First Home:</div>
+        <div id="firstHomeSummary" class="summary-box"></div>
+        <div class="summary-label">First Away:</div>
+        <div id="firstAwaySummary" class="summary-box"></div>
+        <div class="summary-label">Last Home:</div>
+        <div id="lastHomeSummary" class="summary-box"></div>
+        <div class="summary-label">Last Away:</div>
+        <div id="lastAwaySummary" class="summary-box"></div>
+    </div>
 
     <script>
         // Load navigation
-        fetch('/nav.html')
+        fetch(getPath('/nav.html'))
             .then(response => response.text())
             .then(data => {
                 document.getElementById('nav-placeholder').innerHTML = data;
             });
 
-        // Get user name from URL
         const urlParams = new URLSearchParams(window.location.search);
-        const name = urlParams.get('name');
+        const userName = urlParams.get('name');
         
-        if (!name) {
-            window.location.href = '/';
-        } else {
-            // Update greeting and hidden input
-            document.getElementById('userGreeting').textContent = `Hello, ${name} – Pick 4 fixture predictions`;
-            document.getElementById('userName').value = name;
+        if (!userName) {
+            window.location.href = getPath('/');
         }
 
-        // Load teams and current predictions
-        async function loadData() {
-            try {
-                const [teamsResponse, predictionsResponse] = await Promise.all([
-                    fetch('/api/teams'),
-                    fetch('/api/current-predictions')
-                ]);
-                
-                const teams = await teamsResponse.json();
-                const predictions = await predictionsResponse.json();
-                
-                const container = document.getElementById('fixturesContainer');
-                
-                // Create fixtures
-                const fixtures = [
-                    { id: 'first_home', label: 'FIRST HOME match will be against' },
-                    { id: 'first_away', label: 'FIRST AWAY match will be against' },
-                    { id: 'last_home', label: 'FINAL HOME match will be against' },
-                    { id: 'last_away', label: 'FINAL AWAY match will be against' }
-                ];
+        // Store user name
+        localStorage.setItem('userName', userName);
 
-                fixtures.forEach(fixture => {
-                    const fieldset = document.createElement('fieldset');
-                    let optionsHtml = `<legend>${fixture.label}</legend>`;
-                    
-                    // Add team options
-                    teams.forEach(team => {
-                        const predictionKey = `${team.code}:${fixture.id}`;
-                        const teamPredictions = predictions[team.code];
-                        
-                        if (teamPredictions && teamPredictions[fixture.id] && teamPredictions[fixture.id].length > 0) {
-                            // Show who predicted this option
-                            optionsHtml += `
-                                <div class="voted-option">
-                                    <span class="voted-label">${team.team} (${team.code})</span>
-                                    <span class="voter-names">${teamPredictions[fixture.id].join(', ')}</span>
-                                </div>
-                            `;
-                        } else {
-                            // Show radio button for unpredicted options
-                            optionsHtml += `
-                                <label class="selectable-option">
-                                    <input type="radio" name="${fixture.id}" value="${predictionKey}">
-                                    <span class="radio-custom"></span>
-                                    <span class="option-label">${team.team} (${team.code})</span>
-                                </label>
-                            `;
-                        }
-                    });
+        let selectedTeams = {
+            firstHome: null,
+            firstAway: null,
+            lastHome: null,
+            lastAway: null
+        };
 
-                    fieldset.innerHTML = optionsHtml;
-                    container.appendChild(fieldset);
-                });
+        let unavailableTeams = new Set();
 
-                // Add form submission handler
-                document.getElementById('predictionForm').addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    
-                    // Collect all selected predictions
-                    const selectedPredictions = [];
-                    fixtures.forEach(fixture => {
-                        const selected = document.querySelector(`input[name="${fixture.id}"]:checked`);
-                        if (selected) {
-                            selectedPredictions.push(selected.value);
-                        }
-                    });
-
-                    // Validate that all fixtures are selected
-                    if (selectedPredictions.length !== CONFIG.MAX_VOTES) {
-                        alert(`Please select ${CONFIG.MAX_VOTES} teams (one for each fixture)`);
-                        return;
+        // Load teams and unavailable teams
+        Promise.all([
+            fetch(getPath('/api/teams')).then(response => response.json()),
+            fetch(getPath('/api/current-predictions')).then(response => response.json())
+        ]).then(([teams, predictions]) => {
+            console.log('Page loaded, setting up teams:', teams.length);
+            console.log('Teams:', teams);
+            console.log('Predictions:', predictions);
+            
+            // Find teams that are already selected by others
+            if (predictions && typeof predictions === 'object') {
+                Object.entries(predictions).forEach(([teamCode, selections]) => {
+                    if (selections && (
+                        (selections.first_home && selections.first_home.length > 0) || 
+                        (selections.first_away && selections.first_away.length > 0) || 
+                        (selections.last_home && selections.last_home.length > 0) || 
+                        (selections.last_away && selections.last_away.length > 0)
+                    )) {
+                        unavailableTeams.add(teamCode);
                     }
-
-                    // Check for duplicate team selections
-                    const firstMatchTeams = new Set();
-                    const lastMatchTeams = new Set();
-
-                    for (const prediction of selectedPredictions) {
-                        const [teamCode, type] = prediction.split(':');
-                        
-                        if (type === 'first_home' || type === 'first_away') {
-                            if (firstMatchTeams.has(teamCode)) {
-                                alert(`Cannot select ${teamCode} for both first match home and away`);
-                                return;
-                            }
-                            firstMatchTeams.add(teamCode);
-                        }
-                        
-                        if (type === 'last_home' || type === 'last_away') {
-                            if (lastMatchTeams.has(teamCode)) {
-                                alert(`Cannot select ${teamCode} for both last match home and away`);
-                                return;
-                            }
-                            lastMatchTeams.add(teamCode);
-                        }
-                    }
-
-                    // Submit the form
-                    const formData = new FormData();
-                    formData.append('name', name);
-                    selectedPredictions.forEach(prediction => {
-                        formData.append('predictions[]', prediction);
-                    });
-
-                    fetch('/submit', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: new URLSearchParams(formData)
-                    }).then(response => {
-                        if (response.ok) {
-                            window.location.href = '/review';
-                        } else {
-                            response.json().then(data => {
-                                if (data.error && data.error.includes('name has already been used')) {
-                                    alert(data.error);
-                                    window.location.href = '/';
-                                } else {
-                                    alert(data.error || 'Error submitting predictions');
-                                }
-                            });
-                        }
-                    });
                 });
-
-                // Add radio button change handler to prevent selecting same team
-                const radioButtons = document.querySelectorAll('input[type="radio"]');
-                radioButtons.forEach(radio => {
-                    radio.addEventListener('change', function() {
-                        const [teamCode, type] = this.value.split(':');
-                        const otherType = type === 'first_home' ? 'first_away' : 
-                                        type === 'first_away' ? 'first_home' :
-                                        type === 'last_home' ? 'last_away' : 'last_home';
-                        
-                        // Find and uncheck the other radio button for the same team
-                        const otherRadio = document.querySelector(`input[value="${teamCode}:${otherType}"]`);
-                        if (otherRadio) {
-                            const otherOption = otherRadio.closest('.selectable-option');
-                            if (otherOption) {
-                                otherOption.classList.remove('deselected'); // Reset animation
-                                void otherOption.offsetWidth; // Force reflow
-                                otherOption.classList.add('deselected');
-                            }
-                            otherRadio.checked = false;
-                        }
-
-                        // Update summary and button state
-                        updateSummary();
-                        updateSubmitButton();
-                    });
-                });
-
-                // Function to update the submit button state
-                function updateSubmitButton() {
-                    const selectedCount = document.querySelectorAll('input[type="radio"]:checked').length;
-                    const submitButton = document.querySelector('button[type="submit"]');
-                    submitButton.disabled = selectedCount !== CONFIG.MAX_VOTES;
-                    submitButton.style.opacity = selectedCount === CONFIG.MAX_VOTES ? '1' : '0.5';
-                }
-
-                // Function to update the summary
-                function updateSummary() {
-                    const selectedPredictions = {};
-                    fixtures.forEach(fixture => {
-                        const selected = document.querySelector(`input[name="${fixture.id}"]:checked`);
-                        if (selected) {
-                            const [teamCode, type] = selected.value.split(':');
-                            selectedPredictions[type] = teamCode;
-                        }
-                    });
-
-                    let summary = '<span class="summary-label">FIRST</span>';
-                    summary += `<span class="summary-box ${selectedPredictions['first_home'] ? 'selected' : ''}" onclick="scrollToFixture('first_home')">${selectedPredictions['first_home'] || '-'}</span>`;
-                    summary += '<span class="summary-label">A:</span>';
-                    summary += `<span class="summary-box ${selectedPredictions['first_away'] ? 'selected' : ''}" onclick="scrollToFixture('first_away')">${selectedPredictions['first_away'] || '-'}</span>`;
-                    summary += '<span class="summary-label">-</span>';
-                    summary += '<span class="summary-label">LAST</span>';
-                    summary += `<span class="summary-box ${selectedPredictions['last_home'] ? 'selected' : ''}" onclick="scrollToFixture('last_home')">${selectedPredictions['last_home'] || '-'}</span>`;
-                    summary += '<span class="summary-label">A:</span>';
-                    summary += `<span class="summary-box ${selectedPredictions['last_away'] ? 'selected' : ''}" onclick="scrollToFixture('last_away')">${selectedPredictions['last_away'] || '-'}</span>`;
-
-                    document.getElementById('predictionSummary').innerHTML = summary;
-                }
-
-                // Function to scroll to a specific fixture
-                function scrollToFixture(fixtureId) {
-                    const fieldset = document.querySelector(`fieldset legend:contains('${fixtures.find(f => f.id === fixtureId).label}')`).closest('fieldset');
-                    if (fieldset) {
-                        // Find the selected option or first available option
-                        const selectedOption = fieldset.querySelector('input[type="radio"]:checked')?.closest('.selectable-option') || 
-                                            fieldset.querySelector('.selectable-option');
-                        
-                        if (selectedOption) {
-                            selectedOption.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            // Add a highlight effect to the option
-                            selectedOption.classList.add('highlight-option');
-                            setTimeout(() => selectedOption.classList.remove('highlight-option'), 1000);
-                        } else {
-                            // If no selectable option found, scroll to the fieldset
-                            fieldset.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            fieldset.classList.add('highlight');
-                            setTimeout(() => fieldset.classList.remove('highlight'), 1000);
-                        }
-                    }
-                }
-
-                // Add jQuery-like contains selector
-                Element.prototype.contains = function(text) {
-                    return this.textContent.includes(text);
-                };
-
-                // Initial summary update
-                updateSummary();
-
-                // Initial button state
-                updateSubmitButton();
-
-            } catch (error) {
-                console.error('Error loading data:', error);
-                document.getElementById('fixturesContainer').innerHTML = 'Error loading data';
             }
+            
+            console.log('Unavailable teams:', Array.from(unavailableTeams));
+            
+            function renderOptions() {
+                ['firstHome', 'firstAway', 'lastHome', 'lastAway'].forEach(cat => {
+                    const container = document.getElementById(`${cat}Options`);
+                    container.innerHTML = '';
+                    teams.forEach(team => {
+                        const option = createOption(team, cat);
+                        container.appendChild(option);
+                    });
+                });
+            }
+
+            function createOption(team, category) {
+                const label = document.createElement('label');
+                label.className = 'selectable-option';
+                
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = category;
+                input.value = team.code;
+                input.required = true;
+                
+                // Check if this team is unavailable (selected by others)
+                const isUnavailable = unavailableTeams.has(team.code);
+                // Check if this team is selected in another category
+                const isSelectedInOtherCategory = Object.entries(selectedTeams)
+                    .some(([cat, value]) => cat !== category && value === team.code);
+                
+                input.disabled = isUnavailable;
+                if (isUnavailable) {
+                    label.classList.add('unavailable');
+                }
+                
+                // Add change event listener directly to the input
+                input.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        handleSelectionChange(e, category);
+                    }
+                });
+                
+                const radioCustom = document.createElement('span');
+                radioCustom.className = 'radio-custom';
+                
+                const optionLabel = document.createElement('span');
+                optionLabel.className = 'option-label';
+                optionLabel.textContent = `${team.team} (${team.code})`;
+                
+                label.appendChild(input);
+                label.appendChild(radioCustom);
+                label.appendChild(optionLabel);
+                
+                return label;
+            }
+
+            function handleSelectionChange(e, category) {
+                const selectedValue = e.target.value;
+                
+                // If this team is already selected in another category, remove that selection
+                Object.entries(selectedTeams).forEach(([cat, value]) => {
+                    if (cat !== category && value === selectedValue) {
+                        selectedTeams[cat] = null;
+                        // Uncheck the radio button in the other category
+                        const otherInput = document.querySelector(`input[name="${cat}"][value="${selectedValue}"]`);
+                        if (otherInput) {
+                            otherInput.checked = false;
+                        }
+                    }
+                });
+                
+                // Update the selected team for this category
+                selectedTeams[category] = selectedValue;
+                
+                console.log('Selection updated:', {
+                    category,
+                    value: selectedValue,
+                    allSelections: selectedTeams
+                });
+                
+                // Update the summary display
+                updateSummary();
+            }
+
+            renderOptions();
+            console.log('All teams and event listeners set up');
+        });
+
+        function updateSummary() {
+            console.log('Updating summary with selections:', selectedTeams);
+
+            document.getElementById('firstHomeSummary').textContent = selectedTeams.firstHome || '';
+            document.getElementById('firstAwaySummary').textContent = selectedTeams.firstAway || '';
+            document.getElementById('lastHomeSummary').textContent = selectedTeams.lastHome || '';
+            document.getElementById('lastAwaySummary').textContent = selectedTeams.lastAway || '';
+
+            // Add selected class to boxes with values
+            document.getElementById('firstHomeSummary').classList.toggle('selected', !!selectedTeams.firstHome);
+            document.getElementById('firstAwaySummary').classList.toggle('selected', !!selectedTeams.firstAway);
+            document.getElementById('lastHomeSummary').classList.toggle('selected', !!selectedTeams.lastHome);
+            document.getElementById('lastAwaySummary').classList.toggle('selected', !!selectedTeams.lastAway);
         }
 
-        // Load data when page loads
-        loadData();
+        // Handle form submission
+        document.getElementById('predictionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            console.log('Form submission with selections:', selectedTeams);
+            
+            // Validate that all selections are made
+            if (!selectedTeams.firstHome || !selectedTeams.firstAway || !selectedTeams.lastHome || !selectedTeams.lastAway) {
+                alert('Please select all teams before submitting');
+                return;
+            }
+            
+            try {
+                const formData = {
+                    name: userName,
+                    ...selectedTeams
+                };
+                
+                console.log('Sending request to server with data:', formData);
+                const response = await fetch(getPath('/submit'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (response.ok) {
+                    window.location.href = getPath('/review');
+                } else {
+                    const error = await response.json();
+                    console.error('Server error:', error);
+                    alert(error.error || 'Error submitting prediction');
+                }
+            } catch (error) {
+                console.error('Error submitting form:', error);
+                alert('Error submitting prediction');
+            }
+        });
     </script>
 </body>
 </html>

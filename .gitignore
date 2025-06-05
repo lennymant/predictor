@@ -28,3 +28,6 @@ pids
 *.pid
 *.seed
 *.pid.lock 
+
+# user data
+predictions.txt
