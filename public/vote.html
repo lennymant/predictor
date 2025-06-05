@@ -80,7 +80,13 @@
             lastAway: null
         };
 
-        let unavailableTeams = new Set();
+        // Change from Set to Map to track unavailable teams per category
+        let unavailableTeams = {
+            firstHome: new Set(),
+            firstAway: new Set(),
+            lastHome: new Set(),
+            lastAway: new Set()
+        };
 
         // Load teams and unavailable teams
         Promise.all([
@@ -91,21 +97,27 @@
             console.log('Teams:', teams);
             console.log('Predictions:', predictions);
             
-            // Find teams that are already selected by others
+            // Find teams that are already selected by others in each category
             if (predictions && typeof predictions === 'object') {
                 Object.entries(predictions).forEach(([teamCode, selections]) => {
-                    if (selections && (
-                        (selections.first_home && selections.first_home.length > 0) || 
-                        (selections.first_away && selections.first_away.length > 0) || 
-                        (selections.last_home && selections.last_home.length > 0) || 
-                        (selections.last_away && selections.last_away.length > 0)
-                    )) {
-                        unavailableTeams.add(teamCode);
+                    if (selections) {
+                        if (selections.first_home && selections.first_home.length > 0) {
+                            unavailableTeams.firstHome.add(teamCode);
+                        }
+                        if (selections.first_away && selections.first_away.length > 0) {
+                            unavailableTeams.firstAway.add(teamCode);
+                        }
+                        if (selections.last_home && selections.last_home.length > 0) {
+                            unavailableTeams.lastHome.add(teamCode);
+                        }
+                        if (selections.last_away && selections.last_away.length > 0) {
+                            unavailableTeams.lastAway.add(teamCode);
+                        }
                     }
                 });
             }
             
-            console.log('Unavailable teams:', Array.from(unavailableTeams));
+            console.log('Unavailable teams by category:', unavailableTeams);
             
             function renderOptions() {
                 ['firstHome', 'firstAway', 'lastHome', 'lastAway'].forEach(cat => {
@@ -128,11 +140,8 @@
                 input.value = team.code;
                 input.required = true;
                 
-                // Check if this team is unavailable (selected by others)
-                const isUnavailable = unavailableTeams.has(team.code);
-                // Check if this team is selected in another category
-                const isSelectedInOtherCategory = Object.entries(selectedTeams)
-                    .some(([cat, value]) => cat !== category && value === team.code);
+                // Check if this team is unavailable in this specific category
+                const isUnavailable = unavailableTeams[category].has(team.code);
                 
                 input.disabled = isUnavailable;
                 if (isUnavailable) {
@@ -162,18 +171,6 @@
 
             function handleSelectionChange(e, category) {
                 const selectedValue = e.target.value;
-                
-                // If this team is already selected in another category, remove that selection
-                Object.entries(selectedTeams).forEach(([cat, value]) => {
-                    if (cat !== category && value === selectedValue) {
-                        selectedTeams[cat] = null;
-                        // Uncheck the radio button in the other category
-                        const otherInput = document.querySelector(`input[name="${cat}"][value="${selectedValue}"]`);
-                        if (otherInput) {
-                            otherInput.checked = false;
-                        }
-                    }
-                });
                 
                 // Update the selected team for this category
                 selectedTeams[category] = selectedValue;

@@ -951,5 +951,12 @@ legend {
 }
 
 .selectable-option.unavailable .option-label {
-    color: #757575;
+    color: var(--text-secondary);
+}
+
+.warning-message {
+    color: var(--accent-color);
+    font-weight: 600;
+    margin-left: 0.25rem;
+    font-size: 0.9em;
 } 
