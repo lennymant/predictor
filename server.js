@@ -4,6 +4,9 @@ const bodyParser = require('body-parser');
 const app = express();
 const port = 3001;
 
+// Base path configuration
+const BASE_PATH = process.env.BASE_PATH || '/predictor';
+
 // Clear module cache on startup
 Object.keys(require.cache).forEach(key => {
     if (key.includes('teams.json')) {
@@ -17,22 +20,24 @@ const TEAMS = teams.filter(team => team.team !== 'Burnley').map(team => team.tea
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public'));
+
+// Serve static files with base path
+app.use(BASE_PATH, express.static('public'));
 
 // Test endpoint
-app.get('/api/test', (req, res) => {
+app.get(`${BASE_PATH}/api/test`, (req, res) => {
     console.log('Test endpoint hit');
     res.json({ status: 'ok' });
 });
 
 // Teams API endpoint
-app.get('/api/teams', (req, res) => {
+app.get(`${BASE_PATH}/api/teams`, (req, res) => {
     console.log('Teams endpoint hit');
     res.json(teams.filter(team => team.team !== 'Burnley'));
 });
 
 // Predictions API endpoint
-app.get('/api/current-predictions', (req, res) => {
+app.get(`${BASE_PATH}/api/current-predictions`, (req, res) => {
     console.log('Predictions endpoint hit');
     try {
         // Check if file exists, if not create empty array
@@ -154,7 +159,7 @@ function loadPredictions() {
 }
 
 // Get list of existing player names
-app.get('/api/players', (req, res) => {
+app.get(`${BASE_PATH}/api/players`, (req, res) => {
     try {
         const predictions = loadPredictions();
         const names = new Set();
@@ -179,13 +184,13 @@ function injectNavigation(html) {
     return html.replace('</head>', `${navHtml}</head>`);
 }
 
-app.get('/', (req, res) => {
+app.get(BASE_PATH, (req, res) => {
     res.sendFile(__dirname + '/public/name.html');
 });
 
-app.post('/start', (req, res) => {
+app.post(`${BASE_PATH}/start`, (req, res) => {
     const name = req.body.name.trim();
-    if (!name) return res.redirect('/');
+    if (!name) return res.redirect(BASE_PATH);
 
     // Load existing predictions to check for name
     let allPredictions = [];
@@ -205,16 +210,16 @@ app.post('/start', (req, res) => {
         });
     }
 
-    res.redirect(`/vote?name=${encodeURIComponent(name)}`);
+    res.redirect(`${BASE_PATH}/vote?name=${encodeURIComponent(name)}`);
 });
 
-app.get('/vote', (req, res) => {
+app.get(`${BASE_PATH}/vote`, (req, res) => {
     const name = req.query.name;
-    if (!name) return res.redirect('/');
+    if (!name) return res.redirect(BASE_PATH);
     res.sendFile(__dirname + '/public/vote.html');
 });
 
-app.post('/submit', (req, res) => {
+app.post(`${BASE_PATH}/submit`, (req, res) => {
     console.log('Submit endpoint hit with body:', req.body);
     const { name, predictions } = req.body;
     
@@ -283,20 +288,20 @@ app.post('/submit', (req, res) => {
     // Save updated predictions
     fs.writeFileSync('predictions.txt', JSON.stringify(allPredictions, null, 2));
 
-    res.redirect('/review');
+    res.redirect(`${BASE_PATH}/review`);
 });
 
-app.get('/review', (req, res) => {
+app.get(`${BASE_PATH}/review`, (req, res) => {
     res.sendFile(__dirname + '/public/review.html');
 });
 
 // Clear route to reset session
-app.get('/clear', (req, res) => {
+app.get(`${BASE_PATH}/clear`, (req, res) => {
     res.sendFile(__dirname + '/public/clear.html');
 });
 
 // Admin endpoint to reset predictions
-app.post('/api/reset-predictions', (req, res) => {
+app.post(`${BASE_PATH}/api/reset-predictions`, (req, res) => {
     try {
         // Clear the predictions file
         fs.writeFileSync('predictions.txt', '');
@@ -314,5 +319,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(port, () => {
-    console.log(`App running at http://localhost:${port}`);
+    console.log(`App running at http://localhost:${port}${BASE_PATH}`);
 });

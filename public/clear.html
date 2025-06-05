@@ -1,34 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Clearing Session</title>
+    <title>Clear Data</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/predictor/styles.css">
+    <script src="/predictor/config.js"></script>
 </head>
 <body>
     <div id="nav-placeholder"></div>
     
     <div class="message">
-        <h2>Clearing your session...</h2>
-        <p>You will be redirected to the home page.</p>
+        <h1>Clear Data</h1>
+        <p>Your data has been cleared. You will be redirected to the home page.</p>
     </div>
 
     <script>
         // Load navigation
-        fetch('/nav.html')
+        fetch(getPath('/nav.html'))
             .then(response => response.text())
             .then(data => {
                 document.getElementById('nav-placeholder').innerHTML = data;
             });
 
         // Clear localStorage and redirect
-        localStorage.removeItem('userName');
+        localStorage.clear();
         setTimeout(() => {
-            window.location.href = '/';
-        }, 1000);
+            window.location.href = getPath('/');
+        }, 2000);
     </script>
 </body>
 </html> 

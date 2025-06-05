@@ -6,7 +6,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/predictor/styles.css">
+    <script src="/predictor/config.js"></script>
 </head>
 <body>
     <div id="nav-placeholder"></div>
@@ -16,7 +17,7 @@
         <input type="text" name="name" class="name-input" required placeholder="Your name">
         <button type="submit">Start</button>
     </form>
-    <div >
+    <div class="message">
         <h1>Welcome to the Burnley FC 2025-26 Fixture Predictor</h2>
         <div class="instructions">
             <p>Please enter your name above to start making your predictions.</p>
@@ -41,14 +42,14 @@
 
     <script>
         // Load navigation
-        fetch('/nav.html')
+        fetch(getPath('/nav.html'))
             .then(response => response.text())
             .then(data => {
                 document.getElementById('nav-placeholder').innerHTML = data;
             });
 
         // Load existing players
-        fetch('/api/players')
+        fetch(getPath('/api/players'))
             .then(response => response.json())
             .then(players => {
                 const playerList = document.getElementById('playerList');
@@ -73,7 +74,7 @@
             const name = formData.get('name');
             console.log('Submitting name:', name);
             
-            fetch('/start', {
+            fetch(getPath('/start'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
