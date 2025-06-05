@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div id="nav-placeholder"></div>
+    <div class="message">
+        <h2>Admin Panel</h2>
+    </div>
+    <div class="admin-container">
+        <button id="resetButton" class="admin-button">Reset All Predictions</button>
+    </div>
+
+    <script>
+        // Load navigation
+        fetch('/nav.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('nav-placeholder').innerHTML = data;
+            });
+
+        document.getElementById('resetButton').addEventListener('click', function() {
+            if (confirm('Are you sure you want to reset all predictions? This action cannot be undone.')) {
+                fetch('/api/reset-predictions', {
+                    method: 'POST'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        alert('All predictions have been reset successfully.');
+                    } else {
+                        alert('Error resetting predictions. Please try again.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error resetting predictions. Please try again.');
+                });
+            }
+        });
+    </script>
+</body>
+</html> 

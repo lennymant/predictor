@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Make Your Predictions</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+    <script src="config.js"></script>
+</head>
+<body>
+    <div id="nav-placeholder"></div>
+    <div class="message">
+        <h2 id="userGreeting">Loading...</h2>
+    </div>
+    <form method="POST" action="/submit" id="predictionForm" class="vote-container">
+        <input type="hidden" name="name" id="userName">
+        <div id="fixturesContainer"></div>
+        <div id="predictionSummary" class="prediction-summary"></div>
+        <button type="submit">Submit Predictions</button>
+    </form>
+
+    <script>
+        // Load navigation
+        fetch('/nav.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('nav-placeholder').innerHTML = data;
+            });
+
+        // Get user name from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const name = urlParams.get('name');
+        
+        if (!name) {
+            window.location.href = '/';
+        } else {
+            // Update greeting and hidden input
+            document.getElementById('userGreeting').textContent = `Hello, ${name} – Pick 4 fixture predictions`;
+            document.getElementById('userName').value = name;
+        }
+
+        // Load teams and current predictions
+        async function loadData() {
+            try {
+                const [teamsResponse, predictionsResponse] = await Promise.all([
+                    fetch('/api/teams'),
+                    fetch('/api/current-predictions')
+                ]);
+                
+                const teams = await teamsResponse.json();
+                const predictions = await predictionsResponse.json();
+                
+                const container = document.getElementById('fixturesContainer');
+                
+                // Create fixtures
+                const fixtures = [
+                    { id: 'first_home', label: 'FIRST HOME match will be against' },
+                    { id: 'first_away', label: 'FIRST AWAY match will be against' },
+                    { id: 'last_home', label: 'FINAL HOME match will be against' },
+                    { id: 'last_away', label: 'FINAL AWAY match will be against' }
+                ];
+
+                fixtures.forEach(fixture => {
+                    const fieldset = document.createElement('fieldset');
+                    let optionsHtml = `<legend>${fixture.label}</legend>`;
+                    
+                    // Add team options
+                    teams.forEach(team => {
+                        const predictionKey = `${team.code}:${fixture.id}`;
+                        const teamPredictions = predictions[team.code];
+                        
+                        if (teamPredictions && teamPredictions[fixture.id] && teamPredictions[fixture.id].length > 0) {
+                            // Show who predicted this option
+                            optionsHtml += `
+                                <div class="voted-option">
+                                    <span class="voted-label">${team.team} (${team.code})</span>
+                                    <span class="voter-names">${teamPredictions[fixture.id].join(', ')}</span>
+                                </div>
+                            `;
+                        } else {
+                            // Show radio button for unpredicted options
+                            optionsHtml += `
+                                <label class="selectable-option">
+                                    <input type="radio" name="${fixture.id}" value="${predictionKey}">
+                                    <span class="radio-custom"></span>
+                                    <span class="option-label">${team.team} (${team.code})</span>
+                                </label>
+                            `;
+                        }
+                    });
+
+                    fieldset.innerHTML = optionsHtml;
+                    container.appendChild(fieldset);
+                });
+
+                // Add form submission handler
+                document.getElementById('predictionForm').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    // Collect all selected predictions
+                    const selectedPredictions = [];
+                    fixtures.forEach(fixture => {
+                        const selected = document.querySelector(`input[name="${fixture.id}"]:checked`);
+                        if (selected) {
+                            selectedPredictions.push(selected.value);
+                        }
+                    });
+
+                    // Validate that all fixtures are selected
+                    if (selectedPredictions.length !== CONFIG.MAX_VOTES) {
+                        alert(`Please select ${CONFIG.MAX_VOTES} teams (one for each fixture)`);
+                        return;
+                    }
+
+                    // Check for duplicate team selections
+                    const firstMatchTeams = new Set();
+                    const lastMatchTeams = new Set();
+
+                    for (const prediction of selectedPredictions) {
+                        const [teamCode, type] = prediction.split(':');
+                        
+                        if (type === 'first_home' || type === 'first_away') {
+                            if (firstMatchTeams.has(teamCode)) {
+                                alert(`Cannot select ${teamCode} for both first match home and away`);
+                                return;
+                            }
+                            firstMatchTeams.add(teamCode);
+                        }
+                        
+                        if (type === 'last_home' || type === 'last_away') {
+                            if (lastMatchTeams.has(teamCode)) {
+                                alert(`Cannot select ${teamCode} for both last match home and away`);
+                                return;
+                            }
+                            lastMatchTeams.add(teamCode);
+                        }
+                    }
+
+                    // Submit the form
+                    const formData = new FormData();
+                    formData.append('name', name);
+                    selectedPredictions.forEach(prediction => {
+                        formData.append('predictions[]', prediction);
+                    });
+
+                    fetch('/submit', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: new URLSearchParams(formData)
+                    }).then(response => {
+                        if (response.ok) {
+                            window.location.href = '/review';
+                        } else {
+                            response.json().then(data => {
+                                if (data.error && data.error.includes('name has already been used')) {
+                                    alert(data.error);
+                                    window.location.href = '/';
+                                } else {
+                                    alert(data.error || 'Error submitting predictions');
+                                }
+                            });
+                        }
+                    });
+                });
+
+                // Add radio button change handler to prevent selecting same team
+                const radioButtons = document.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => {
+                    radio.addEventListener('change', function() {
+                        const [teamCode, type] = this.value.split(':');
+                        const otherType = type === 'first_home' ? 'first_away' : 
+                                        type === 'first_away' ? 'first_home' :
+                                        type === 'last_home' ? 'last_away' : 'last_home';
+                        
+                        // Find and uncheck the other radio button for the same team
+                        const otherRadio = document.querySelector(`input[value="${teamCode}:${otherType}"]`);
+                        if (otherRadio) {
+                            const otherOption = otherRadio.closest('.selectable-option');
+                            if (otherOption) {
+                                otherOption.classList.remove('deselected'); // Reset animation
+                                void otherOption.offsetWidth; // Force reflow
+                                otherOption.classList.add('deselected');
+                            }
+                            otherRadio.checked = false;
+                        }
+
+                        // Update summary and button state
+                        updateSummary();
+                        updateSubmitButton();
+                    });
+                });
+
+                // Function to update the submit button state
+                function updateSubmitButton() {
+                    const selectedCount = document.querySelectorAll('input[type="radio"]:checked').length;
+                    const submitButton = document.querySelector('button[type="submit"]');
+                    submitButton.disabled = selectedCount !== CONFIG.MAX_VOTES;
+                    submitButton.style.opacity = selectedCount === CONFIG.MAX_VOTES ? '1' : '0.5';
+                }
+
+                // Function to update the summary
+                function updateSummary() {
+                    const selectedPredictions = {};
+                    fixtures.forEach(fixture => {
+                        const selected = document.querySelector(`input[name="${fixture.id}"]:checked`);
+                        if (selected) {
+                            const [teamCode, type] = selected.value.split(':');
+                            selectedPredictions[type] = teamCode;
+                        }
+                    });
+
+                    let summary = '<span class="summary-label">FIRST</span>';
+                    summary += `<span class="summary-box ${selectedPredictions['first_home'] ? 'selected' : ''}" onclick="scrollToFixture('first_home')">${selectedPredictions['first_home'] || '-'}</span>`;
+                    summary += '<span class="summary-label">A:</span>';
+                    summary += `<span class="summary-box ${selectedPredictions['first_away'] ? 'selected' : ''}" onclick="scrollToFixture('first_away')">${selectedPredictions['first_away'] || '-'}</span>`;
+                    summary += '<span class="summary-label">-</span>';
+                    summary += '<span class="summary-label">LAST</span>';
+                    summary += `<span class="summary-box ${selectedPredictions['last_home'] ? 'selected' : ''}" onclick="scrollToFixture('last_home')">${selectedPredictions['last_home'] || '-'}</span>`;
+                    summary += '<span class="summary-label">A:</span>';
+                    summary += `<span class="summary-box ${selectedPredictions['last_away'] ? 'selected' : ''}" onclick="scrollToFixture('last_away')">${selectedPredictions['last_away'] || '-'}</span>`;
+
+                    document.getElementById('predictionSummary').innerHTML = summary;
+                }
+
+                // Function to scroll to a specific fixture
+                function scrollToFixture(fixtureId) {
+                    const fieldset = document.querySelector(`fieldset legend:contains('${fixtures.find(f => f.id === fixtureId).label}')`).closest('fieldset');
+                    if (fieldset) {
+                        // Find the selected option or first available option
+                        const selectedOption = fieldset.querySelector('input[type="radio"]:checked')?.closest('.selectable-option') || 
+                                            fieldset.querySelector('.selectable-option');
+                        
+                        if (selectedOption) {
+                            selectedOption.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            // Add a highlight effect to the option
+                            selectedOption.classList.add('highlight-option');
+                            setTimeout(() => selectedOption.classList.remove('highlight-option'), 1000);
+                        } else {
+                            // If no selectable option found, scroll to the fieldset
+                            fieldset.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            fieldset.classList.add('highlight');
+                            setTimeout(() => fieldset.classList.remove('highlight'), 1000);
+                        }
+                    }
+                }
+
+                // Add jQuery-like contains selector
+                Element.prototype.contains = function(text) {
+                    return this.textContent.includes(text);
+                };
+
+                // Initial summary update
+                updateSummary();
+
+                // Initial button state
+                updateSubmitButton();
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('fixturesContainer').innerHTML = 'Error loading data';
+            }
+        }
+
+        // Load data when page loads
+        loadData();
+    </script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+[
+    {
+      "code": "ARS",
+      "team": "Arsenal",
+      "location": "London (Holloway)",
+      "stadium": "Emirates Stadium",
+      "capacity": 60704
+    },
+    {
+      "code": "AVL",
+      "team": "Aston Villa",
+      "location": "Birmingham",
+      "stadium": "Villa Park",
+      "capacity": 42918
+    },
+    {
+      "code": "BOU",
+      "team": "AFC Bournemouth",
+      "location": "Bournemouth",
+      "stadium": "Vitality Stadium",
+      "capacity": 11307
+    },
+    {
+      "code": "BRE",
+      "team": "Brentford",
+      "location": "London (Brentford)",
+      "stadium": "Gtech Community Stadium",
+      "capacity": 17250
+    },
+    {
+      "code": "BHA",
+      "team": "Brighton & Hove Albion",
+      "location": "Falmer",
+      "stadium": "American Express Stadium",
+      "capacity": 31876
+    },
+    {
+      "code": "BRN",
+      "team": "Burnley",
+      "location": "Burnley",
+      "stadium": "Turf Moor",
+      "capacity": 21944
+    },
+    {
+      "code": "CHE",
+      "team": "Chelsea",
+      "location": "London (Fulham)",
+      "stadium": "Stamford Bridge",
+      "capacity": 40173
+    },
+    {
+      "code": "CRY",
+      "team": "Crystal Palace",
+      "location": "London (Selhurst)",
+      "stadium": "Selhurst Park",
+      "capacity": 25194
+    },
+    {
+      "code": "EVE",
+      "team": "Everton",
+      "location": "Liverpool (Vauxhall)",
+      "stadium": "Hill Dickinson Stadium",
+      "capacity": 52888
+    },
+    {
+      "code": "FUL",
+      "team": "Fulham",
+      "location": "London (Fulham)",
+      "stadium": "Craven Cottage",
+      "capacity": 29589
+    },
+    {
+      "code": "LEE",
+      "team": "Leeds United",
+      "location": "Leeds",
+      "stadium": "Elland Road",
+      "capacity": 37645
+    },
+    {
+      "code": "LIV",
+      "team": "Liverpool",
+      "location": "Liverpool (Anfield)",
+      "stadium": "Anfield",
+      "capacity": 61276
+    },
+    {
+      "code": "MCI",
+      "team": "Manchester City",
+      "location": "Manchester (Bradford)",
+      "stadium": "Etihad Stadium",
+      "capacity": 52900
+    },
+    {
+      "code": "MUN",
+      "team": "Manchester United",
+      "location": "Manchester (Stretford)",
+      "stadium": "Old Trafford",
+      "capacity": 74197
+    },
+    {
+      "code": "NEW",
+      "team": "Newcastle United",
+      "location": "Newcastle upon Tyne",
+      "stadium": "St James' Park",
+      "capacity": 52258
+    },
+    {
+      "code": "NFO",
+      "team": "Nottingham Forest",
+      "location": "West Bridgford",
+      "stadium": "City Ground",
+      "capacity": 30404
+    },
+    {
+      "code": "SHU",
+      "team": "Sheffield United",
+      "location": "Sheffield",
+      "stadium": "Bramall Lane",
+      "capacity": 32702
+    },
+    {
+      "code": "SUN",
+      "team": "Sunderland",
+      "location": "Sunderland",
+      "stadium": "Stadium of Light",
+      "capacity": 49000
+    },
+    {
+      "code": "TOT",
+      "team": "Tottenham Hotspur",
+      "location": "London (Tottenham)",
+      "stadium": "Tottenham Hotspur Stadium",
+      "capacity": 62850
+    },
+    {
+      "code": "WHU",
+      "team": "West Ham United",
+      "location": "London (Stratford)",
+      "stadium": "London Stadium",
+      "capacity": 62500
+    },
+    {
+      "code": "WOL",
+      "team": "Wolverhampton Wanderers",
+      "location": "Wolverhampton",
+      "stadium": "Molineux Stadium",
+      "capacity": 31750
+    }
+  ]
+  

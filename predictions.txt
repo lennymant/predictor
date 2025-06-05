@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Lenny",
+    "predictions": [
+      "ARS:first_home",
+      "AVL:first_away",
+      "LEE:last_home",
+      "NFO:last_away"
+    ],
+    "timestamp": "2025-06-05T17:37:51.256Z"
+  },
+  {
+    "name": "Leon",
+    "predictions": [
+      "AVL:first_home",
+      "BHA:first_away",
+      "LIV:last_home",
+      "BHA:last_away"
+    ],
+    "timestamp": "2025-06-05T17:47:20.803Z"
+  }
+]

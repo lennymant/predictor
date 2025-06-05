@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Prediction Review</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div id="nav-placeholder"></div>
+    <div class="message">
+        <h2>Current Predictions</h2>
+    </div>
+    <div class="table-container">
+        <div id="predictionGrid"></div>
+    </div>
+
+    <script>
+        // Load navigation
+        fetch('/nav.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('nav-placeholder').innerHTML = data;
+            });
+
+        async function loadPredictions() {
+            try {
+                const [predictionsResponse, teamsResponse] = await Promise.all([
+                    fetch('/api/current-predictions'),
+                    fetch('/api/teams')
+                ]);
+                const predictionDetails = await predictionsResponse.json();
+                const teams = await teamsResponse.json();
+                
+                // Get current user's name from localStorage
+                const currentUser = localStorage.getItem('userName');
+                
+                // Create team code to name mapping
+                const teamsMap = teams.reduce((acc, team) => {
+                    acc[team.code] = team.team;
+                    return acc;
+                }, {});
+                
+                displayPredictions(predictionDetails, teamsMap, currentUser);
+            } catch (error) {
+                console.error('Error loading predictions:', error);
+                document.getElementById('predictionGrid').innerHTML = 'Error loading predictions';
+            }
+        }
+
+        function displayPredictions(predictionDetails, teamsMap, currentUser) {
+            let tableHtml = '<table>';
+            let cardsHtml = '';
+            
+            // Header row for table
+            tableHtml += `
+                <tr class="header-row">
+                    <th>Team</th>
+                    <th colspan="2">FIRST</th>
+                    <th colspan="2">LAST</th>
+                </tr>
+                <tr class="header-row">
+                    <th></th>
+                    <th>Home</th>
+                    <th>Away</th>
+                    <th>Home</th>
+                    <th>Away</th>
+                </tr>
+            `;
+
+            // Get teams from the prediction details
+            const teams = Object.keys(predictionDetails).sort();
+
+            // Helper function to format voter list with current user highlight
+            function formatVoterList(voters) {
+                if (!currentUser) {
+                    console.log('No current user found in localStorage');
+                    return voters.join('<br>');
+                }
+                
+                return voters.map(voter => {
+                    const isCurrentUser = voter.toLowerCase() === currentUser.toLowerCase();
+                    console.log(`Comparing: ${voter} with ${currentUser}, match: ${isCurrentUser}`);
+                    return `<span class="${isCurrentUser ? 'current-user' : ''}">${voter}</span>`;
+                }).join('<br>');
+            }
+
+            // Create both table rows and cards for each team
+            teams.forEach(teamCode => {
+                const details = predictionDetails[teamCode];
+                const teamName = teamsMap[teamCode] || teamCode;
+                
+                // Table row
+                tableHtml += `
+                    <tr>
+                        <td class="team-name">${teamName} (${teamCode})</td>
+                        <td class="voter-list">${formatVoterList(details.first_home)}</td>
+                        <td class="voter-list">${formatVoterList(details.first_away)}</td>
+                        <td class="voter-list">${formatVoterList(details.last_home)}</td>
+                        <td class="voter-list">${formatVoterList(details.last_away)}</td>
+                    </tr>
+                `;
+
+                // Card
+                cardsHtml += `
+                    <div class="prediction-card">
+                        <div class="card-header">
+                            <h3>${teamName} (${teamCode})</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="prediction-section">
+                                <h4>FIRST</h4>
+                                <div class="prediction-columns">
+                                    <div class="prediction-column">
+                                        <div class="column-label">Home</div>
+                                        <div class="voter-list">${formatVoterList(details.first_home)}</div>
+                                    </div>
+                                    <div class="prediction-column">
+                                        <div class="column-label">Away</div>
+                                        <div class="voter-list">${formatVoterList(details.first_away)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="prediction-section">
+                                <h4>LAST</h4>
+                                <div class="prediction-columns">
+                                    <div class="prediction-column">
+                                        <div class="column-label">Home</div>
+                                        <div class="voter-list">${formatVoterList(details.last_home)}</div>
+                                    </div>
+                                    <div class="prediction-column">
+                                        <div class="column-label">Away</div>
+                                        <div class="voter-list">${formatVoterList(details.last_away)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            tableHtml += '</table>';
+            
+            // Update the grid with both layouts
+            document.getElementById('predictionGrid').innerHTML = `
+                <div class="table-view">${tableHtml}</div>
+                <div class="cards-view">${cardsHtml}</div>
+            `;
+        }
+
+        // Load predictions when page loads
+        loadPredictions();
+    </script>
+</body>
+</html> 

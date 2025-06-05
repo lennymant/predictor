@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enter Your Name</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div id="nav-placeholder"></div>
+    
+    <form id="nameForm" class="name-form">
+        <h2>Enter your name to start</h2>
+        <input type="text" name="name" class="name-input" required placeholder="Your name">
+        <button type="submit">Start</button>
+    </form>
+    <div class="message">
+        <h1>Welcome to the Burnley FC 2025-26 Fixture Predictor</h2>
+        <div class="instructions">
+            <p>Please enter your name above to start making your predictions.</p>
+            <p>You will need to predict 4 fixtures for Burnley in 2025/26.  Fixtures are released on Weds 18 June, at 0900BST.</p>
+            <ul>
+                <li>First home fixture</li>
+                <li>First away fixture</li>
+                <li>Final home fixture</li>
+                <li>Final away fixture</li>
+            </ul>
+            <p>Each team can only be selected once for the first match and the final match (you can't select the same team for both home and away).</p>
+            <p>I don't yet know how to score it, so just wait and see...</p>
+        </div>
+    </div>
+    
+
+    <script>
+        // Load navigation
+        fetch('/nav.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('nav-placeholder').innerHTML = data;
+            });
+
+        document.getElementById('nameForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const name = formData.get('name');
+            console.log('Submitting name:', name);
+            
+            fetch('/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(formData)
+            }).then(response => {
+                if (response.ok) {
+                    // Save name to localStorage before redirecting
+                    console.log('Saving name to localStorage:', name);
+                    localStorage.setItem('userName', name);
+                    console.log('Name saved, redirecting...');
+                    window.location.href = response.url;
+                } else {
+                    response.json().then(data => {
+                        alert(data.error || 'Error starting prediction');
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
