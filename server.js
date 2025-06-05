@@ -125,7 +125,7 @@ app.get(`${BASE_PATH}/api/current-predictions`, async (req, res) => {
         predictions.forEach(record => {
             if (record.predictions) {
                 record.predictions.forEach(prediction => {
-                    const [teamCode, type] = prediction.split(':');
+                    const [type, teamCode] = prediction.split(':');
                     if (!CONFIG.IGNORED_TEAMS.includes(teamCode) && 
                         predictionDetails[teamCode] && 
                         predictionDetails[teamCode][type]) {
@@ -135,6 +135,7 @@ app.get(`${BASE_PATH}/api/current-predictions`, async (req, res) => {
             }
         });
 
+        console.log('Processed prediction details:', predictionDetails);
         res.json(predictionDetails);
     } catch (error) {
         console.error('Error reading predictions:', error);
@@ -305,6 +306,24 @@ app.post(`${BASE_PATH}/start`, async (req, res) => {
         return res.status(400).json({ error: 'Name is required' });
     }
     res.redirect(`${BASE_PATH}/vote?name=${encodeURIComponent(name)}`);
+});
+
+// Debug route for root path
+app.get('/', (req, res) => {
+    console.log('📥 GET / received (direct root access)');
+    const debugInfo = {
+        timestamp: new Date().toISOString(),
+        serverStatus: 'running',
+        basePath: BASE_PATH,
+        config: {
+            maxVotes: CONFIG.MAX_VOTES,
+            ignoredTeams: CONFIG.IGNORED_TEAMS,
+            ignoredTeamNames: CONFIG.IGNORED_TEAM_NAMES
+        },
+        headers: req.headers,
+        url: req.url
+    };
+    res.json(debugInfo);
 });
 
 // Initialize predictions file before starting server
