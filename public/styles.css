@@ -10,7 +10,7 @@
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
     --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
     --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
-    --container-width: 800px;
+    --container-width: 960px;
     --container-padding: 1rem;
 }
 
@@ -34,14 +34,16 @@ body {
 
 /* Navigation */
 .nav {
-    background-color: var(--surface-color);
+    background-color: var(--primary-color);
     padding: 0.75rem 0;
     box-shadow: var(--shadow-sm);
     position: sticky;
     top: 0;
     z-index: 100;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--primary-hover);
     width: 100%;
+    display: flex;
+    justify-content: center;
 }
 
 .nav-container {
@@ -50,13 +52,12 @@ body {
     align-items: center;
     width: 100%;
     max-width: var(--container-width);
-    margin: 0 auto;
     padding: 0 var(--container-padding);
     box-sizing: border-box;
 }
 
 .nav-title {
-    color: var(--primary-color);
+    color: white;
     font-weight: 700;
     font-size: 1.25rem;
     white-space: nowrap;
@@ -72,7 +73,7 @@ body {
 }
 
 .nav-link {
-    color: var(--primary-color);
+    color: white;
     text-decoration: none;
     padding: 0.5rem 0.75rem;
     font-weight: 500;
@@ -82,8 +83,8 @@ body {
 }
 
 .nav-link:hover {
-    background-color: var(--background-color);
-    color: var(--primary-hover);
+    background-color: var(--primary-hover);
+    color: white;
 }
 
 /* Main content container */
@@ -97,21 +98,26 @@ body > *:not(.nav) {
 
 /* Message panel */
 .message {
-    background-color: var(--surface-color);
+    background-color: var(--text-secondary);
     padding: 1rem;
     box-shadow: var(--shadow-md);
     margin-bottom: 1rem;
-    border: 1px solid var(--border-color);
-    width: 100%;
+    border: 1px solid var(--text-secondary);
     box-sizing: border-box;
+    width: 100%;
 }
 
 .message h1, .message h2 {
-    margin: 0 0 0.75rem 0;
-    color: var(--text-primary);
+    margin: 0 0 0.5rem 0;
+    color: white;
     font-weight: 600;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     letter-spacing: -0.02em;
+}
+
+.message p {
+    color: white;
+    margin: 0.5rem 0;
 }
 
 /* Vote page styles */
@@ -447,12 +453,16 @@ legend {
     min-width: 120px;
 }
 
-.table-view tr:hover {
+.table-view tr:nth-child(even) {
     background-color: var(--background-color);
 }
 
+.table-view tr:hover {
+    background-color: var(--border-color);
+}
+
 .table-view tr:hover .team-name {
-    background-color: var(--background-color);
+    background-color: var(--border-color);
 }
 
 /* Card layout */
@@ -468,8 +478,12 @@ legend {
     overflow: hidden;
 }
 
-.card-header {
+.prediction-card:nth-child(even) {
     background-color: var(--background-color);
+}
+
+.card-header {
+    background-color: inherit;
     padding: 0.75rem;
     border-bottom: 1px solid var(--border-color);
 }
@@ -510,20 +524,50 @@ legend {
 
 .prediction-column {
     background-color: var(--background-color);
-    padding: 0.75rem;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .column-label {
     font-size: 0.8rem;
     color: var(--text-secondary);
-    margin-bottom: 0.5rem;
+    font-weight: 600;
+    min-width: 1.5rem;
+    text-align: center;
+    background-color: var(--surface-color);
+    padding: 0.25rem;
+    border-radius: 2px;
+}
+
+.column-label.home {
+    color: #2563eb;
+}
+
+.column-label.away {
+    color: #dc2626;
+}
+
+.team-name {
+    flex-grow: 1;
     font-weight: 500;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.team-name.no-predictions {
+    color: var(--text-secondary);
+    opacity: 0.7;
 }
 
 .voter-list {
     color: var(--text-secondary);
     font-size: 0.9rem;
     line-height: 1.6;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
 }
 
 .voter-list .current-user {
@@ -532,6 +576,18 @@ legend {
     background-color: #22c55e;
     padding: 0.25rem 0.5rem;
     display: inline-block;
+    border-radius: 2px;
+    margin: 0.25rem 0;
+}
+
+.team-name .current-user {
+    color: white;
+    font-weight: 600;
+    background-color: #22c55e;
+    padding: 0.25rem 0.5rem;
+    display: inline-block;
+    border-radius: 2px;
+    margin: 0.25rem 0;
 }
 
 /* Admin styles */
@@ -627,6 +683,37 @@ legend {
         padding: 0.25rem 0.5rem;
         font-size: 0.9rem;
     }
+
+    .prediction-columns {
+        gap: 0.5rem;
+    }
+
+    .prediction-column {
+        padding: 0.4rem;
+    }
+
+    .column-label {
+        font-size: 0.75rem;
+        min-width: 1.25rem;
+        padding: 0.2rem;
+    }
+
+    .team-name {
+        font-size: 0.85rem;
+    }
+
+    .voter-list {
+        font-size: 0.85rem;
+        margin-top: 0.4rem;
+        padding-top: 0.4rem;
+    }
+
+    .voter-list .current-user,
+    .team-name .current-user {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.85rem;
+        margin: 0.2rem 0;
+    }
 }
 
 /* Tablet and larger screens */
@@ -680,7 +767,7 @@ legend {
 /* Desktop screens */
 @media screen and (min-width: 1024px) {
     :root {
-        --container-width: 800px;
+        --container-width: 960px;
         --container-padding: 1rem;
     }
     
@@ -699,4 +786,41 @@ legend {
     .message {
         padding: 1.5rem;
     }
+
+    /* Adjust table view for wider screens */
+    .table-view table {
+        min-width: 800px;
+    }
+
+    .table-view .voter-list {
+        min-width: 150px;
+    }
+}
+
+/* Player list */
+.player-list {
+    margin-top: 0.5rem;
+}
+
+.player-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.5rem;
+}
+
+.player-list li {
+    padding: 0.5rem;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.player-list p {
+    color: var(--text-secondary);
+    font-style: italic;
+    margin: 0;
 } 

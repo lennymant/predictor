@@ -2,7 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const bodyParser = require('body-parser');
 const app = express();
-const port = 3000;
+const port = 3001;
 
 // Clear module cache on startup
 Object.keys(require.cache).forEach(key => {
@@ -107,6 +107,69 @@ app.get('/api/current-predictions', (req, res) => {
         console.error('Error in /api/current-predictions:', error);
         res.setHeader('Content-Type', 'application/json');
         res.status(500).json({ error: 'Error reading predictions' });
+    }
+});
+
+// Function to load predictions from file
+function loadPredictions() {
+    try {
+        if (!fs.existsSync('predictions.txt')) {
+            return {};
+        }
+        const data = fs.readFileSync('predictions.txt', 'utf8');
+        if (!data.trim() || data.trim() === '[]') {
+            return {};
+        }
+        const predictions = JSON.parse(data);
+        const predictionDetails = {};
+
+        // Initialize prediction details for all teams using codes
+        teams.filter(team => team.team !== 'Burnley').forEach(team => {
+            predictionDetails[team.code] = {
+                'first_home': [],
+                'first_away': [],
+                'last_home': [],
+                'last_away': []
+            };
+        });
+
+        // Collect predictor names for each option
+        predictions.forEach(record => {
+            if (!record.predictions) return;
+            
+            const predictions = Array.isArray(record.predictions) ? record.predictions : [record.predictions];
+            predictions.forEach(prediction => {
+                const [teamCode, type] = prediction.split(':');
+                if (predictionDetails[teamCode] && predictionDetails[teamCode][type]) {
+                    predictionDetails[teamCode][type].push(record.name);
+                }
+            });
+        });
+
+        return predictionDetails;
+    } catch (error) {
+        console.error('Error loading predictions:', error);
+        return {};
+    }
+}
+
+// Get list of existing player names
+app.get('/api/players', (req, res) => {
+    try {
+        const predictions = loadPredictions();
+        const names = new Set();
+        
+        // Extract unique names from predictions
+        Object.values(predictions).forEach(teamPredictions => {
+            Object.values(teamPredictions).forEach(predictions => {
+                predictions.forEach(name => names.add(name));
+            });
+        });
+        
+        res.json(Array.from(names).sort());
+    } catch (error) {
+        console.error('Error getting player names:', error);
+        res.status(500).json({ error: 'Error getting player names' });
     }
 });
 
@@ -225,6 +288,11 @@ app.post('/submit', (req, res) => {
 
 app.get('/review', (req, res) => {
     res.sendFile(__dirname + '/public/review.html');
+});
+
+// Clear route to reset session
+app.get('/clear', (req, res) => {
+    res.sendFile(__dirname + '/public/clear.html');
 });
 
 // Admin endpoint to reset predictions

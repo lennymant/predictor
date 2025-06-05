@@ -16,7 +16,7 @@
         <input type="text" name="name" class="name-input" required placeholder="Your name">
         <button type="submit">Start</button>
     </form>
-    <div class="message">
+    <div >
         <h1>Welcome to the Burnley FC 2025-26 Fixture Predictor</h2>
         <div class="instructions">
             <p>Please enter your name above to start making your predictions.</p>
@@ -32,6 +32,12 @@
         </div>
     </div>
     
+    <div class="message">
+        <h2>Players who have already predicted</h2>
+        <div id="playerList" class="player-list">
+            <p>Loading players...</p>
+        </div>
+    </div>
 
     <script>
         // Load navigation
@@ -39,6 +45,26 @@
             .then(response => response.text())
             .then(data => {
                 document.getElementById('nav-placeholder').innerHTML = data;
+            });
+
+        // Load existing players
+        fetch('/api/players')
+            .then(response => response.json())
+            .then(players => {
+                const playerList = document.getElementById('playerList');
+                if (players.length === 0) {
+                    playerList.innerHTML = '<p>No players have made predictions yet.</p>';
+                } else {
+                    playerList.innerHTML = `
+                        <ul>
+                            ${players.map(player => `<li>${player}</li>`).join('')}
+                        </ul>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading players:', error);
+                document.getElementById('playerList').innerHTML = '<p>Error loading players.</p>';
             });
 
         document.getElementById('nameForm').addEventListener('submit', function(e) {

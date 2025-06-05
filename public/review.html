@@ -50,6 +50,19 @@
             }
         }
 
+        // Helper function to format voter list with current user highlight
+        function formatVoterList(voters, currentUser) {
+            if (!currentUser) {
+                console.log('No current user found in localStorage');
+                return voters.join('<br>');
+            }
+            
+            return voters.map(voter => {
+                const isCurrentUser = voter.toLowerCase() === currentUser.toLowerCase();
+                return isCurrentUser ? `<span class="current-user">${voter}</span>` : voter;
+            }).join('<br>');
+        }
+
         function displayPredictions(predictionDetails, teamsMap, currentUser) {
             let tableHtml = '<table>';
             let cardsHtml = '';
@@ -73,20 +86,6 @@
             // Get teams from the prediction details
             const teams = Object.keys(predictionDetails).sort();
 
-            // Helper function to format voter list with current user highlight
-            function formatVoterList(voters) {
-                if (!currentUser) {
-                    console.log('No current user found in localStorage');
-                    return voters.join('<br>');
-                }
-                
-                return voters.map(voter => {
-                    const isCurrentUser = voter.toLowerCase() === currentUser.toLowerCase();
-                    console.log(`Comparing: ${voter} with ${currentUser}, match: ${isCurrentUser}`);
-                    return `<span class="${isCurrentUser ? 'current-user' : ''}">${voter}</span>`;
-                }).join('<br>');
-            }
-
             // Create both table rows and cards for each team
             teams.forEach(teamCode => {
                 const details = predictionDetails[teamCode];
@@ -96,49 +95,15 @@
                 tableHtml += `
                     <tr>
                         <td class="team-name">${teamName} (${teamCode})</td>
-                        <td class="voter-list">${formatVoterList(details.first_home)}</td>
-                        <td class="voter-list">${formatVoterList(details.first_away)}</td>
-                        <td class="voter-list">${formatVoterList(details.last_home)}</td>
-                        <td class="voter-list">${formatVoterList(details.last_away)}</td>
+                        <td class="voter-list">${formatVoterList(details.first_home, currentUser)}</td>
+                        <td class="voter-list">${formatVoterList(details.first_away, currentUser)}</td>
+                        <td class="voter-list">${formatVoterList(details.last_home, currentUser)}</td>
+                        <td class="voter-list">${formatVoterList(details.last_away, currentUser)}</td>
                     </tr>
                 `;
 
                 // Card
-                cardsHtml += `
-                    <div class="prediction-card">
-                        <div class="card-header">
-                            <h3>${teamName} (${teamCode})</h3>
-                        </div>
-                        <div class="card-content">
-                            <div class="prediction-section">
-                                <h4>FIRST</h4>
-                                <div class="prediction-columns">
-                                    <div class="prediction-column">
-                                        <div class="column-label">Home</div>
-                                        <div class="voter-list">${formatVoterList(details.first_home)}</div>
-                                    </div>
-                                    <div class="prediction-column">
-                                        <div class="column-label">Away</div>
-                                        <div class="voter-list">${formatVoterList(details.first_away)}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="prediction-section">
-                                <h4>LAST</h4>
-                                <div class="prediction-columns">
-                                    <div class="prediction-column">
-                                        <div class="column-label">Home</div>
-                                        <div class="voter-list">${formatVoterList(details.last_home)}</div>
-                                    </div>
-                                    <div class="prediction-column">
-                                        <div class="column-label">Away</div>
-                                        <div class="voter-list">${formatVoterList(details.last_away)}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
+                cardsHtml += createPredictionCard(teamCode, teamName, details, currentUser);
             });
 
             tableHtml += '</table>';
@@ -147,6 +112,52 @@
             document.getElementById('predictionGrid').innerHTML = `
                 <div class="table-view">${tableHtml}</div>
                 <div class="cards-view">${cardsHtml}</div>
+            `;
+        }
+
+        function createPredictionCard(teamCode, teamName, predictions, currentUser) {
+            return `
+                <div class="prediction-card">
+                    <div class="card-header">
+                        <h3>${teamName}</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="prediction-section">
+                            <h4>First Match</h4>
+                            <div class="prediction-columns">
+                                <div class="prediction-column">
+                                    <span class="column-label home">H</span>
+                                    <span class="team-name ${predictions.first_home.length === 0 ? 'no-predictions' : ''}">
+                                        ${predictions.first_home.length > 0 ? formatVoterList(predictions.first_home, currentUser) : 'No predictions'}
+                                    </span>
+                                </div>
+                                <div class="prediction-column">
+                                    <span class="column-label away">A</span>
+                                    <span class="team-name ${predictions.first_away.length === 0 ? 'no-predictions' : ''}">
+                                        ${predictions.first_away.length > 0 ? formatVoterList(predictions.first_away, currentUser) : 'No predictions'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="prediction-section">
+                            <h4>Last Match</h4>
+                            <div class="prediction-columns">
+                                <div class="prediction-column">
+                                    <span class="column-label home">H</span>
+                                    <span class="team-name ${predictions.last_home.length === 0 ? 'no-predictions' : ''}">
+                                        ${predictions.last_home.length > 0 ? formatVoterList(predictions.last_home, currentUser) : 'No predictions'}
+                                    </span>
+                                </div>
+                                <div class="prediction-column">
+                                    <span class="column-label away">A</span>
+                                    <span class="team-name ${predictions.last_away.length === 0 ? 'no-predictions' : ''}">
+                                        ${predictions.last_away.length > 0 ? formatVoterList(predictions.last_away, currentUser) : 'No predictions'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             `;
         }
 
