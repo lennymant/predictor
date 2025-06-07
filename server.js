@@ -18,9 +18,6 @@ app.use((req, res, next) => {
     next();
 });
 
-// Serve static files from the public directory under /predictor
-app.use(BASE_PATH, express.static('public'));
-
 // Initialize predictions file if it doesn't exist
 async function initializePredictionsFile() {
     try {
@@ -30,6 +27,62 @@ async function initializePredictionsFile() {
         await fs.writeFile('predictions.txt', JSON.stringify([], null, 2));
     }
 }
+
+// API endpoints
+app.post(`${BASE_PATH}/api/backup-predictions`, async (req, res) => {
+    try {
+        // Read current predictions
+        const data = await fs.readFile('predictions.txt', 'utf8');
+        
+        // Create timestamp for filename
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const backupFilename = `predictions-${timestamp}.txt`;
+        const backupPath = path.join(__dirname, 'backups', backupFilename);
+        
+        // Write backup file
+        await fs.writeFile(backupPath, data);
+        console.log('Backup created successfully:', backupFilename);
+        
+        res.json({ 
+            success: true, 
+            message: 'Backup created successfully',
+            filename: backupFilename
+        });
+    } catch (error) {
+        console.error('Error creating backup:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Error creating backup',
+            details: error.message 
+        });
+    }
+});
+
+app.post(`${BASE_PATH}/api/reset-predictions`, async (req, res) => {
+    try {
+        // Create empty predictions array
+        const emptyPredictions = JSON.stringify([], null, 2);
+        
+        // Write to predictions file
+        await fs.writeFile('predictions.txt', emptyPredictions);
+        console.log('Predictions reset successfully');
+        
+        res.json({ 
+            success: true, 
+            message: 'Predictions reset successfully'
+        });
+    } catch (error) {
+        console.error('Error resetting predictions:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Error resetting predictions',
+            details: error.message 
+        });
+    }
+});
+
+// Serve static files from the public directory under /predictor
+app.use(BASE_PATH, express.static('public'));
 
 // Root route handler
 app.get(BASE_PATH, (req, res) => {
@@ -161,13 +214,16 @@ app.get(`${BASE_PATH}/api/predictions`, async (req, res) => {
         
         // Transform predictions into the expected format
         const transformedPredictions = predictions.map(pred => {
+            console.log('Processing prediction with timestamp:', pred.timestamp);
             const result = {
                 name: pred.name || '',
                 firstHome: '',
                 firstAway: '',
                 lastHome: '',
-                lastAway: ''
+                lastAway: '',
+                timestamp: pred.timestamp || new Date().toISOString()
             };
+            console.log('Transformed result with timestamp:', result.timestamp);
             
             if (pred.predictions && Array.isArray(pred.predictions)) {
                 pred.predictions.forEach(p => {
@@ -324,6 +380,37 @@ app.get('/', (req, res) => {
         url: req.url
     };
     res.json(debugInfo);
+});
+
+// Delete individual prediction endpoint
+app.delete(`${BASE_PATH}/api/predictions/:name`, async (req, res) => {
+    try {
+        const { name } = req.params;
+        console.log('Deleting prediction for:', name);
+        
+        // Read current predictions
+        const data = await fs.readFile('predictions.txt', 'utf8');
+        let predictions = JSON.parse(data);
+        
+        // Filter out the prediction to delete
+        predictions = predictions.filter(pred => pred.name !== name);
+        
+        // Save updated predictions
+        await fs.writeFile('predictions.txt', JSON.stringify(predictions, null, 2));
+        console.log('Prediction deleted successfully');
+        
+        res.json({ 
+            success: true, 
+            message: 'Prediction deleted successfully'
+        });
+    } catch (error) {
+        console.error('Error deleting prediction:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Error deleting prediction',
+            details: error.message 
+        });
+    }
 });
 
 // Initialize predictions file before starting server

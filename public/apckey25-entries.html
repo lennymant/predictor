@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin - All Entries</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/predictor/styles.css">
+    <script src="/predictor/config-ui.js"></script>
+    <style>
+        .entries-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .entries-table th, .entries-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .entries-table th {
+            background-color: #f5f5f5;
+            font-weight: 600;
+        }
+        .entries-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        .timestamp {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .admin-container {
+            margin: 20px;
+        }
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background-color 0.2s;
+        }
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
+        .actions-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .mobile-row {
+            display: none;
+        }
+
+        @media screen and (max-width: 767px) {
+            .entries-table th:last-child,
+            .entries-table td:last-child {
+                display: none;
+            }
+            .mobile-row {
+                display: table-row;
+            }
+            .mobile-row td {
+                padding-top: 0;
+                padding-bottom: 12px;
+            }
+            .mobile-row .actions-cell {
+                justify-content: flex-end;
+            }
+            .entries-table td {
+                padding: 8px 12px;
+            }
+            .timestamp {
+                font-size: 0.85em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="nav-placeholder"></div>
+    <div class="message">
+        <h2>All Prediction Entries</h2>
+    </div>
+    <div class="admin-container">
+        <div id="entriesTable"></div>
+    </div>
+
+    <script>
+        // Load navigation
+        fetch(getPath('/nav.html'))
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('nav-placeholder').innerHTML = data;
+            });
+
+        // Load and display entries
+        async function loadEntries() {
+            try {
+                // Clear existing table
+                document.getElementById('entriesTable').innerHTML = '';
+                
+                const response = await fetch(getPath('/api/predictions'));
+                const predictions = await response.json();
+                
+                const table = document.createElement('table');
+                table.className = 'entries-table';
+                
+                // Create table header
+                const thead = document.createElement('thead');
+                thead.innerHTML = `
+                    <tr>
+                        <th>Name</th>
+                        <th>First Home</th>
+                        <th>First Away</th>
+                        <th>Last Home</th>
+                        <th>Last Away</th>
+                        <th>Timestamp</th>
+                        <th>Actions</th>
+                    </tr>
+                `;
+                table.appendChild(thead);
+                
+                // Create table body
+                const tbody = document.createElement('tbody');
+                predictions.forEach(pred => {
+                    // Main row
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${pred.name}</td>
+                        <td>${pred.firstHome}</td>
+                        <td>${pred.firstAway}</td>
+                        <td>${pred.lastHome}</td>
+                        <td>${pred.lastAway}</td>
+                        <td class="timestamp">${pred.timestamp ? new Date(pred.timestamp).toLocaleString('en-GB', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            hour12: false,
+                            timeZone: 'UTC'
+                        }) : 'N/A'}</td>
+                        <td class="actions-cell">
+                            <button class="delete-btn" onclick="deletePrediction('${pred.name}')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+
+                    // Mobile row for timestamp and actions
+                    const mobileRow = document.createElement('tr');
+                    mobileRow.className = 'mobile-row';
+                    mobileRow.innerHTML = `
+                        <td colspan="6">
+                            <div class="actions-cell">
+                                <span class="timestamp">${pred.timestamp ? new Date(pred.timestamp).toLocaleString('en-GB', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    second: '2-digit',
+                                    hour12: false,
+                                    timeZone: 'UTC'
+                                }) : 'N/A'}</span>
+                                <button class="delete-btn" onclick="deletePrediction('${pred.name}')">Delete</button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(mobileRow);
+                });
+                table.appendChild(tbody);
+                
+                document.getElementById('entriesTable').appendChild(table);
+            } catch (error) {
+                console.error('Error loading entries:', error);
+                document.getElementById('entriesTable').innerHTML = '<p>Error loading entries. Please try again.</p>';
+            }
+        }
+
+        // Delete prediction function
+        async function deletePrediction(name) {
+            if (confirm(`Are you sure you want to delete the prediction for ${name}? This action cannot be undone.`)) {
+                try {
+                    const response = await fetch(getPath(`/api/predictions/${encodeURIComponent(name)}`), {
+                        method: 'DELETE'
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        alert('Prediction deleted successfully');
+                        // Reload the entries table
+                        loadEntries();
+                    } else {
+                        alert('Error deleting prediction: ' + (result.error || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error deleting prediction. Please try again.');
+                }
+            }
+        }
+
+        // Load entries when page loads
+        loadEntries();
+    </script>
+</body>
+</html> 
